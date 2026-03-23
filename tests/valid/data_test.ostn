@@ -1,0 +1,18 @@
+# Variable: version
+#   A static u32 data field representing the version.
+data version: u32 = 2
+
+# Variable: pi
+#   A static f64 data field representing the value of PI.
+data pi: f64 = 3.14159265358979
+
+# Variable: hello
+#   A static u8 array containing the string "hello".
+data hello: u8[] = "hello\n\0"
+
+# Function: entry
+#   Standard entry point for the data test. Loads 42 into rax.
+fn entry {
+    mov(u64) rax, imm(42)
+    ret
+}

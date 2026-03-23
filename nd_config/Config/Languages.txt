@@ -1,0 +1,18 @@
+Language: Osteon
+
+   Extensions: ostn
+   Line Comment: #
+   Package Separator: ::
+   Case Sensitive: Yes
+   
+   Class Prototype Ender: {
+   Function Prototype Ender: {
+   Variable Prototype Enders: = :
+   
+   # For 'static fn' or 'inline fn'
+   Function Keyword: fn
+   Class Keyword: struct
+   Variable Keywords: data const let
+   
+   # Ensure Natural Docs picks up namespace as a package
+   Package Keyword: namespace

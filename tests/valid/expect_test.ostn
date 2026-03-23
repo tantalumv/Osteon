@@ -1,0 +1,21 @@
+# Function: safe_add
+#   Performs an addition and returns.
+#
+# Parameters:
+#   rax - The first operand.
+#   rdi - The second operand.
+fn safe_add {
+    add(u64) rax, rdi
+    ret
+}
+
+# Function: caller
+#   Demonstrates the 'expect' construct for checking call success.
+#   Calls safe_add and expects no error (rdx=0).
+fn caller {
+    mov(u64) rax, imm(1)
+    mov(u64) rdi, imm(2)
+    call safe_add
+    expect("add failed")
+    ret
+}

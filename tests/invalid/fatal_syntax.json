@@ -1,0 +1,13 @@
+{
+  "file": "tests/invalid/fatal_syntax.ostn",
+  "line": 1,
+  "col": 8,
+  "code": "fatal/syntax",
+  "message": "Unexpected token in function body: Invalid (?)",
+  "correction": "",
+  "error_context": {
+    "before": [],
+    "offending": "fn x { ???invalid }",
+    "after": []
+  }
+}

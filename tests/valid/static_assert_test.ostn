@@ -1,0 +1,18 @@
+# Constant: X
+#   Example constant for compile-time assertion.
+const X = 42
+
+# Constant: Y
+#   Example constant derived from an expression for compile-time assertion.
+const Y = 6 * 7
+
+static_assert(X == Y, "X must equal Y")
+static_assert(X > 0, "X must be positive")
+static_assert(X != 0, "X must be nonzero")
+
+# Function: entry
+#   Standard entry point for the static assert test.
+fn entry {
+    mov(u64) rax, imm(X)
+    ret
+}

@@ -1,0 +1,9 @@
+# Namespace: foo
+#   Namespace demonstration example.
+namespace foo
+
+# Function: bar
+#   A simple function within the foo namespace.
+fn bar {
+    ret
+}

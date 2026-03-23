@@ -1,0 +1,7 @@
+# Function: countdown
+#   Demonstrates a basic for-loop counting down from 10 to 0.
+fn countdown {
+    for rcx = imm(10), imm(0), imm(-1) {
+    }
+    ret
+}

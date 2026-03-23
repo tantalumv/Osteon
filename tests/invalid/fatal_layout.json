@@ -1,0 +1,13 @@
+{
+  "file": "tests/invalid/fatal_layout.ostn",
+  "line": 1,
+  "col": 1,
+  "code": "fatal/layout",
+  "message": "Field b in struct Bad is misaligned. Offset is 1, size is 4. Use explicit _pad field.",
+  "correction": "",
+  "error_context": {
+    "before": [],
+    "offending": "struct Bad {",
+    "after": ["    a: u8,","    b: u32,","}"]
+  }
+}

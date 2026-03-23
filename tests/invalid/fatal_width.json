@@ -1,0 +1,13 @@
+{
+  "file": "tests/invalid/fatal_width.ostn",
+  "line": 1,
+  "col": 10,
+  "code": "fatal/width",
+  "message": "eax is 32-bit; instruction width is U64",
+  "correction": "mov(U32) eax, ebx",
+  "error_context": {
+    "before": [],
+    "offending": "fn x { mov(u64) eax, ebx }",
+    "after": []
+  }
+}

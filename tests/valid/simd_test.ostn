@@ -1,0 +1,26 @@
+# Function: float_add
+#   Demonstrates basic scalar floating-point addition and multiplication.
+#
+# Parameters:
+#   xmm1 - Accumulator/LHS.
+#   xmm2 - Value to add.
+#   xmm3 - Value to multiply.
+fn float_add {
+    movss xmm0, xmm1
+    addss xmm0, xmm2
+    mulss xmm0, xmm3
+    ret
+}
+
+# Function: float_load
+#   Demonstrates floating-point memory access (scalar).
+#
+# Parameters:
+#   rdi - Pointer to input floats.
+#   rsi - Pointer to output float destination.
+fn float_load {
+    movss xmm0, deref(rdi, 0)
+    addss xmm0, deref(rdi, 4)
+    movss deref(rsi, 0), xmm0
+    ret
+}

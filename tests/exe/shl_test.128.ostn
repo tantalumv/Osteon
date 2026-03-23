@@ -1,0 +1,7 @@
+# Function: main
+#   Shifts 1 left by 7 bits to return 128 as the exit code.
+fn main {
+    mov(u64) rax, imm(1)
+    shl(u64) rax, imm(7)
+    ret
+}

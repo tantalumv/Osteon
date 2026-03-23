@@ -1,0 +1,50 @@
+name: Documentation
+
+on:
+  push:
+    branches: ["main"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download Natural Docs
+        run: |
+          # Download the native Linux x64 version for maximum performance
+          curl -L "https://www.naturaldocs.org/download/natural_docs/2.3.1/Natural_Docs_2.3.1_Linux_x64.zip" -o nd.zip
+          unzip nd.zip -d natural_docs_bin
+          chmod +x natural_docs_bin/NaturalDocs
+
+      - name: Generate Documentation
+        run: |
+          # -i: source, -o: output format and path, -p: project config
+          ./natural_docs_bin/NaturalDocs -i . -o HTML nd_output -p nd_config
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: 'nd_output'
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

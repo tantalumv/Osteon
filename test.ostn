@@ -1,0 +1,6 @@
+# Function: test
+#   A simple test function that loads 1 into rax and returns.
+#
+# Returns:
+#   rax - The constant 1.
+fn test { mov(u64) rax, imm(1) ret }

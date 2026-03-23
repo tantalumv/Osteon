@@ -1,0 +1,3 @@
+# Function: x
+#   A function that intentionally fails width consistency checks.
+fn x { mov(u64) eax, ebx }

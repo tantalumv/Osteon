@@ -1,0 +1,40 @@
+# Namespace: math
+#   A namespace for mathematical safety checks.
+namespace math
+
+# Function: safe_div
+#   Performs a division with a divide-by-zero check using the Result convention.
+#
+# Parameters:
+#   rdi - The numerator.
+#   rsi - The denominator.
+#
+# Returns:
+#   rax - The quotient (on success).
+#   rdx - 0 on success, 1 on divide-by-zero.
+fn safe_div {
+    let num = rdi
+    let den = rsi
+
+    test(u64) den, den
+    jnz      ok
+    mov(u64) rdx, imm(1)
+    xor(u64) rax, rax
+    ret
+
+    label ok:
+        xor(u64) rdx, rdx
+        mov(u64) rax, num
+        div(u64) den
+        ret
+}
+
+# Function: caller
+#   Calls math::safe_div and uses 'expect' to trap on error.
+fn caller {
+    mov(u64) rdi, imm(100)
+    mov(u64) rsi, imm(5)
+    call math::safe_div
+    expect("safe_div failed")
+    ret
+}

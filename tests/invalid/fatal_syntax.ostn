@@ -1,0 +1,3 @@
+# Function: x
+#   A function that intentionally fails syntax parsing.
+fn x { ???invalid }

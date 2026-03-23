@@ -1,0 +1,42 @@
+# --- Natural Docs ---
+# Documentation output
+nd_output/
+# Project state and cache
+nd_config/Data/
+nd_config/Last\ Session.txt
+# Temporary binaries
+natural_docs_bin/
+
+# --- Osteon Compiler Artifacts ---
+# Binaries and object files
+*.exe
+*.obj
+*.o
+*.lib
+*.a
+*.dll
+*.so
+
+# Debugging and state
+*.pdb
+*.osc
+*.raddbg
+*.prof
+*.emb
+
+# --- ML Artifacts ---
+ml/logs/
+ml/vector-db/
+ml/models/**
+!ml/models/.gitkeep
+
+# --- OS/Editor Specific ---
+.DS_Store
+.vscode/
+.idea/
+.vs/
+*.swp
+*.log
+
+# Gemini CLI internal state
+.gemini/

@@ -1,0 +1,7 @@
+# Function: main
+#   Calculates 10 + 20 and returns the result (30).
+fn main {
+    mov(u64) rax, imm(10)
+    add(u64) rax, imm(20)
+    ret
+}

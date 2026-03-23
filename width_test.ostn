@@ -1,0 +1,4 @@
+# Function: test
+#   A test function demonstrating a 64-bit move using 32-bit registers (eax/ebx).
+#   This is primarily used to verify the width analysis pass.
+fn test { mov(u64) eax, ebx }

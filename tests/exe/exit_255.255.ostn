@@ -1,0 +1,6 @@
+# Function: main
+#   Returns 255 as the exit code.
+fn main {
+    mov(u64) rax, imm(255)
+    ret
+}

@@ -1,0 +1,6 @@
+# Struct: Bad
+#   A struct that intentionally fails layout validation due to misalignment.
+struct Bad {
+    a: u8,
+    b: u32,
+}

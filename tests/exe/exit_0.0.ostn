@@ -1,0 +1,6 @@
+# Function: main
+#   Returns 0 as the exit code.
+fn main {
+    xor(u64) rax, rax
+    ret
+}

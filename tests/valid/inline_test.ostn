@@ -1,0 +1,17 @@
+# Function: swap_rax_rbx
+#   An inline function that swaps the contents of rax and rbx using the stack.
+inline fn swap_rax_rbx {
+    push rax
+    push rbx
+    pop rax
+    pop rbx
+}
+
+# Function: entry
+#   Standard entry point for the inline function test.
+fn entry {
+    mov(u64) rax, imm(1)
+    mov(u64) rbx, imm(2)
+    swap_rax_rbx
+    ret
+}

@@ -1,0 +1,4 @@
+# Constant: X
+#   A constant that intentionally fails a static assertion.
+const X = 1
+static_assert(X == 0, "X must be zero")

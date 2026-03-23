@@ -1,0 +1,13 @@
+# Namespace: hello
+#   Entry point for the hello world example.
+namespace hello
+
+# Function: entry
+#   Standard entry point. Loads 123 into rax.
+#
+# Returns:
+#   rax - The constant 123.
+fn entry {
+    mov(u64) rax, imm(123)
+    ret
+}

@@ -1,0 +1,7 @@
+# Function: bad
+#   A function that intentionally contains unreachable code after a return.
+fn bad {
+    mov(u64) rax, imm(1)
+    ret
+    mov(u64) rax, imm(2)
+}

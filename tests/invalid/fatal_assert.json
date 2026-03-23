@@ -1,0 +1,13 @@
+{
+  "file": "tests/invalid/fatal_assert.ostn",
+  "line": 2,
+  "col": 1,
+  "code": "fatal/assert",
+  "message": "X must be nonzero",
+  "correction": "",
+  "error_context": {
+    "before": ["const X = 1"],
+    "offending": "static_assert(X - 1, \"X must be nonzero\")",
+    "after": []
+  }
+}

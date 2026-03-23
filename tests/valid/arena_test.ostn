@@ -1,0 +1,18 @@
+# Function: init_buf
+#   Demonstrates arena initialization and basic allocation.
+#   Initializes a 4096-byte arena and performs two allocations before resetting.
+#
+# Parameters:
+#   rdi - Pointer to the backing buffer for the arena.
+fn init_buf {
+    let buf = rdi
+
+    arena pool = init(buf, imm(4096))
+    alloc(pool, imm(64), imm(8))
+    let ptr = rax
+
+    alloc(pool, imm(128), imm(16))
+    reset(pool)
+
+    ret
+}

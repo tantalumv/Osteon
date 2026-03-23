@@ -1,0 +1,17 @@
+# Namespace: math
+#   Basic mathematical operations.
+namespace math
+
+# Function: add
+#   Adds a 64-bit integer to the accumulator.
+#
+# Parameters:
+#   rax - The accumulator.
+#   rdi - The value to add.
+#
+# Returns:
+#   rax - The sum.
+fn add {
+    add(u64) rax, rdi
+    ret
+}

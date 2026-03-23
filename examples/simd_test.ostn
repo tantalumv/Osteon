@@ -1,0 +1,72 @@
+section ".text"
+
+# Function: simd_test
+#   Demonstrates various SIMD instructions including vector loads,
+#   arithmetic, square root, broadcast, FMA, and comparisons.
+#
+# Parameters:
+#   rdi - Pointer to source/destination vector A.
+#   rsi - Pointer to source vector B.
+#   xmm0 - Source float for broadcasting.
+fn simd_test {
+    # Vector load/store
+    vload ymm0, deref(rdi, 0)
+    vloada ymm1, deref(rsi, 0)
+    vstore deref(rdi, 0), ymm0
+    vstorea deref(rsi, 0), ymm1
+
+    # Vector arithmetic
+    vaddps ymm0, ymm0, ymm1
+    vsubps ymm2, ymm0, ymm1
+    vmulps ymm3, ymm0, ymm1
+    vdivps ymm4, ymm0, ymm1
+    vminps ymm5, ymm0, ymm1
+    vmaxps ymm6, ymm0, ymm1
+
+    # Sqrt
+    vsqrtps ymm7, ymm0
+
+    # Broadcast
+    vbroadcastss ymm8, xmm0
+
+    # FMA: ymm0 = ymm1 * ymm2 + ymm0
+    vfmadd231ps ymm0, ymm1, ymm2
+
+    # FMA 4-operand form: ymm9 = ymm1 * ymm2 + ymm3
+    vfma ymm9, ymm1, ymm2, ymm3
+
+    # Compare: ymm10 = mask where ymm0 > ymm1 (predicate 14 = _CMP_GT_OS)
+    vcmpps ymm10, ymm0, ymm1, imm(14)
+
+    # Blend by mask
+    vblendv ymm11, ymm0, ymm1, ymm10
+
+    ret
+}
+
+# Function: particle_update
+#   Updates particle positions using velocity and delta time (SIMD optimized).
+#   Demonstrates for-loop unrolling and FMA usage.
+#
+# Parameters:
+#   rdi - Pointer to positions array.
+#   rsi - Pointer to velocities array.
+#   xmm0 - Delta time (dt).
+fn particle_update {
+    let pos = rdi
+    let vel = rsi
+    let dt  = xmm0
+
+    vbroadcastss ymm15, xmm0
+
+    for[unroll(2)] rcx = imm(0), imm(1024), imm(8) {
+        vload ymm0, deref(pos, 0)
+        vload ymm1, deref(vel, 0)
+        vfmadd231ps ymm0, ymm1, ymm15
+        vstore deref(pos, 0), ymm0
+        add(u64) pos, imm(32)
+        add(u64) vel, imm(32)
+    }
+
+    ret
+}
