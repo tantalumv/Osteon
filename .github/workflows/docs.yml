@@ -33,7 +33,7 @@ jobs:
       - name: Download Natural Docs (Native Linux x64)
         run: |
           # Download the high-performance native binary (no Mono/Dotnet needed)
-          curl -L "https://www.naturaldocs.org/download/natural_docs/2.4/Natural_Docs_2.4_Development_Release_2.Linux.x64.zip" -o nd.zip
+          curl -L -A "Mozilla/5.0" "https://www.naturaldocs.org/download/natural_docs/2.4/Natural_Docs_2.4_Development_Release_2.Linux.x64.zip" -o nd.zip
           unzip nd.zip -d natural_docs_bin
           chmod +x natural_docs_bin/NaturalDocs
 
