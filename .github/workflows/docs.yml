@@ -44,17 +44,16 @@ jobs:
       - name: Generate API Docs (Natural Docs)
         run: |
           mkdir -p docs/api
-          # Find the entry point (DLL or EXE) case-insensitively
-          ND_PATH=$(find natural_docs_bin -maxdepth 5 -iname "NaturalDocs.dll" -o -iname "NaturalDocs.exe" | head -n 1)
+          # Natural Docs 2.3.1 has a specific folder for .NET 6.0
+          ND_PATH=$(find natural_docs_bin -path "*/Net60/NaturalDocs.dll" | head -n 1)
           
           if [ -z "$ND_PATH" ]; then
-            echo "ERROR: Could not find NaturalDocs.dll or NaturalDocs.exe in natural_docs_bin/"
-            ls -R natural_docs_bin
+            echo "ERROR: Could not find Net60/NaturalDocs.dll in natural_docs_bin/"
+            find natural_docs_bin -name "NaturalDocs.dll"
             exit 1
           fi
           
-          echo "Found entry point at: $ND_PATH"
-          # Execute using dotnet
+          echo "Found .NET 6.0 entry point at: $ND_PATH"
           dotnet "$ND_PATH" -i . -o HTML docs/api -p nd_config
 
       - name: Build MkDocs Site
