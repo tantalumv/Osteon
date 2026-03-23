@@ -2,6 +2,8 @@ site_name: Osteon Documentation
 site_description: Structured Assembly for Systems Engineers and LLM Agents
 site_author: Osteon Project
 
+docs_dir: .
+
 theme:
   name: terminal
   palette: dark
