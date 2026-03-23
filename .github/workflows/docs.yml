@@ -46,8 +46,8 @@ jobs:
       - name: Build MkDocs Site
         run: |
           cp README.md docs/index.md
-          # Build the final site from docs directory
-          mkdocs build -f docs/mkdocs.yml -d site_output
+          # Build the final site to site_output at root
+          (cd docs && mkdocs build -d ../site_output)
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
