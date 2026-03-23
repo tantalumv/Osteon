@@ -1,0 +1,41 @@
+site_name: Osteon Documentation
+site_description: Structured Assembly for Systems Engineers and LLM Agents
+site_author: Osteon Project
+
+theme:
+  name: terminal
+  palette: dark
+  # Terminal theme specific settings
+  font:
+    family: 'JetBrains Mono'
+    code: 'JetBrains Mono'
+  features:
+    - navigation.expand
+    - navigation.tabs
+    - toc.follow
+
+plugins:
+  - search
+  - awesome-nav
+
+nav:
+  - Home: index.md
+  - Guide: Developer-Guide.md
+  - Specification: Osteon-Spec.md
+  - Progress: Osteon-progress.md
+  - Performance: Osteon-perf-expansion.md
+  - ML Integration: Osteon-ml-spec.md
+  - API Reference: api/index.html  # This will link to the Natural Docs output
+
+markdown_extensions:
+  - pymdownx.highlight:
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.superfences
+  - tables
+  - admonition
+  - toc:
+      permalink: true

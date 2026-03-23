@@ -26,21 +26,39 @@ jobs:
         with:
           dotnet-version: 6.0.x
 
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+
+      - name: Install MkDocs Dependencies
+        run: |
+          pip install mkdocs mkdocs-terminal mkdocs-awesome-nav
+
       - name: Download Natural Docs
         run: |
-          # Download the cross-platform version of Natural Docs 2.3.1
           curl -L "https://www.naturaldocs.org/download/natural_docs/2.3.1/Natural_Docs_2.3.1.zip" -o nd.zip
           unzip nd.zip -d natural_docs_bin
 
-      - name: Generate Documentation
+      - name: Generate API Docs (Natural Docs)
         run: |
-          # Use dotnet to run the cross-platform NaturalDocs.dll
-          dotnet natural_docs_bin/NaturalDocs.dll -i . -o HTML nd_output -p nd_config
+          # Generate API docs into a subfolder of the MkDocs site
+          mkdir -p docs/api
+          dotnet natural_docs_bin/NaturalDocs.dll -i . -o HTML docs/api -p nd_config
+
+      - name: Build MkDocs Site
+        run: |
+          # Move existing markdown files into a 'docs' folder if not already there
+          mkdir -p docs
+          cp README.md docs/index.md
+          cp docs/*.md docs/ 2>/dev/null || true
+          # Build the final site
+          mkdocs build -d site_output
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: 'nd_output'
+          path: 'site_output'
 
   deploy:
     needs: build
