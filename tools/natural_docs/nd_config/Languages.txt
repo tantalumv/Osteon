@@ -58,6 +58,15 @@
 #    code block.
 #
 #
+# Languages
+# ------------------------------------------------------------------------
+
+Language: Odin
+   Extensions: odin
+   Line Comments: //
+   Block Comments: /* */
+   Case Sensitive: yes
+
 # Properties for Basic Language Support Only
 # ------------------------------------------------------------------------
 # If you're adding your own language to Natural Docs you must define these.

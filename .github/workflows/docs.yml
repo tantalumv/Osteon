@@ -30,7 +30,7 @@ jobs:
       - name: Generate API Docs (Natural Docs)
         run: |
           mkdir -p site_output
-          ./"natural_docs_bin/Natural Docs/NaturalDocs" -i src -o HTML site_output -p tools/natural_docs/nd_config
+          ./"natural_docs_bin/Natural Docs/NaturalDocs" -i src -o HTML site_output -p tools/natural_docs/nd_config -v
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
