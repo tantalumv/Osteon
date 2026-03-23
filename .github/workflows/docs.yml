@@ -37,22 +37,25 @@ jobs:
 
       - name: Download Natural Docs
         run: |
+          # Download the stable cross-platform version
           curl -L "https://www.naturaldocs.org/download/natural_docs/2.3.1/Natural_Docs_2.3.1.zip" -o nd.zip
           unzip nd.zip -d natural_docs_bin
 
       - name: Generate API Docs (Natural Docs)
         run: |
-          # Generate API docs into a subfolder of the MkDocs site
           mkdir -p docs/api
-          dotnet natural_docs_bin/NaturalDocs.dll -i . -o HTML docs/api -p nd_config
+          # Find the DLL dynamically to avoid path issues
+          ND_DLL=$(find natural_docs_bin -name "NaturalDocs.dll" | head -n 1)
+          echo "Found NaturalDocs.dll at: $ND_DLL"
+          dotnet "$ND_DLL" -i . -o HTML docs/api -p nd_config
 
       - name: Build MkDocs Site
         run: |
-          # Move existing markdown files into a 'docs' folder if not already there
           mkdir -p docs
           cp README.md docs/index.md
-          cp docs/*.md docs/ 2>/dev/null || true
-          # Build the final site
+          # Copy only if files exist to avoid error
+          find docs/*.md -maxdepth 0 -exec cp {} docs/ \; 2>/dev/null || true
+          # Re-copy the API docs into the built site folder structure
           mkdocs build -d site_output
 
       - name: Upload artifact
