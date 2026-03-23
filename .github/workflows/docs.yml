@@ -21,17 +21,21 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 6.0.x
+
       - name: Download Natural Docs
         run: |
-          # Download the native Linux x64 version for maximum performance
-          curl -L "https://www.naturaldocs.org/download/natural_docs/2.3.1/Natural_Docs_2.3.1_Linux_x64.zip" -o nd.zip
+          # Download the cross-platform version of Natural Docs 2.3.1
+          curl -L "https://www.naturaldocs.org/download/natural_docs/2.3.1/Natural_Docs_2.3.1.zip" -o nd.zip
           unzip nd.zip -d natural_docs_bin
-          chmod +x natural_docs_bin/NaturalDocs
 
       - name: Generate Documentation
         run: |
-          # -i: source, -o: output format and path, -p: project config
-          ./natural_docs_bin/NaturalDocs -i . -o HTML nd_output -p nd_config
+          # Use dotnet to run the cross-platform NaturalDocs.dll
+          dotnet natural_docs_bin/NaturalDocs.dll -i . -o HTML nd_output -p nd_config
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
