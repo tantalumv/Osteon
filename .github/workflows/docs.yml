@@ -45,12 +45,9 @@ jobs:
 
       - name: Build MkDocs Site
         run: |
-          mkdir -p docs
           cp README.md docs/index.md
-          # Copy extra markdown files if they exist
-          find docs/*.md -maxdepth 0 -exec cp {} docs/ \; 2>/dev/null || true
           # Build the final site from docs directory
-          cd docs && mkdocs build -d ../site_output
+          mkdocs build -f docs/mkdocs.yml -d site_output
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
