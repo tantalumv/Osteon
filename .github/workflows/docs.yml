@@ -44,18 +44,26 @@ jobs:
       - name: Generate API Docs (Natural Docs)
         run: |
           mkdir -p docs/api
-          # Find the DLL dynamically to avoid path issues
-          ND_DLL=$(find natural_docs_bin -name "NaturalDocs.dll" | head -n 1)
-          echo "Found NaturalDocs.dll at: $ND_DLL"
-          dotnet "$ND_DLL" -i . -o HTML docs/api -p nd_config
+          # Find the entry point (DLL or EXE) case-insensitively
+          ND_PATH=$(find natural_docs_bin -maxdepth 5 -iname "NaturalDocs.dll" -o -iname "NaturalDocs.exe" | head -n 1)
+          
+          if [ -z "$ND_PATH" ]; then
+            echo "ERROR: Could not find NaturalDocs.dll or NaturalDocs.exe in natural_docs_bin/"
+            ls -R natural_docs_bin
+            exit 1
+          fi
+          
+          echo "Found entry point at: $ND_PATH"
+          # Execute using dotnet
+          dotnet "$ND_PATH" -i . -o HTML docs/api -p nd_config
 
       - name: Build MkDocs Site
         run: |
           mkdir -p docs
           cp README.md docs/index.md
-          # Copy only if files exist to avoid error
+          # Copy extra markdown files if they exist
           find docs/*.md -maxdepth 0 -exec cp {} docs/ \; 2>/dev/null || true
-          # Re-copy the API docs into the built site folder structure
+          # Build the final site
           mkdocs build -d site_output
 
       - name: Upload artifact
