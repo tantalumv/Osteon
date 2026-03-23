@@ -65,7 +65,7 @@
 # Source Code
 # ------------------------------------------------------------------------
 
-Source Folder: ..
+Source Folder: ../..
 
 
 # This is where you tell Natural Docs which folders it should scan for source
@@ -143,7 +143,7 @@ Source Folder: ..
 # Generated Documentation
 # ------------------------------------------------------------------------
 
-HTML Output Folder: ..\nd_output
+HTML Output Folder: ..\..\nd_output
 
 
 # This is where you tell Natural Docs what kind of documentation you want

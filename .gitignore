@@ -25,10 +25,10 @@ natural_docs_bin/
 *.emb
 
 # --- ML Artifacts ---
-ml/logs/
-ml/vector-db/
-ml/models/**
-!ml/models/.gitkeep
+tools/ml/logs/
+tools/ml/vector-db/
+tools/ml/models/**
+!tools/ml/models/.gitkeep
 
 # --- OS/Editor Specific ---
 .DS_Store

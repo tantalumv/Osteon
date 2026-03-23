@@ -1,17 +1,17 @@
 # Osteon Task Runner
 
 build:
-	odin build compiler -out:osteon.exe -debug
+	odin build src/compiler -out:bin/osteon.exe -debug
 
 run:
-	odin run compiler -out:osteon.exe -- examples/hello.ostn
+	odin run src/compiler -out:bin/osteon.exe -- examples/hello.ostn
 
 check:
-	odin run compiler -out:osteon.exe -- --check examples/hello.ostn
+	odin run src/compiler -out:bin/osteon.exe -- --check examples/hello.ostn
 
 test:
 	# Run internal tests and golden file tests
-	odin run compiler -out:osteon.exe -- --test
+	odin run src/compiler -out:bin/osteon.exe -- --test
 
 clean:
-	rm osteon.exe
+	rm bin/osteon.exe
