@@ -20,11 +20,11 @@ plugins:
 
 nav:
   - Home: index.md
-  - Guide: Developer-Guide.md
-  - Specification: Osteon-Spec.md
-  - Progress: Osteon-progress.md
-  - Performance: Osteon-perf-expansion.md
-  - ML Integration: Osteon-ml-spec.md
+  - Guide: guides/Developer-Guide.md
+  - Specification: specs/Osteon-Spec.md
+  - Progress: specs/Osteon-progress.md
+  - Performance: specs/Osteon-perf-expansion.md
+  - ML Integration: specs/Osteon-ml-spec.md
   - API Reference: api/index.html  # This will link to the Natural Docs output
 
 markdown_extensions:

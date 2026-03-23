@@ -49,8 +49,8 @@ jobs:
           cp README.md docs/index.md
           # Copy extra markdown files if they exist
           find docs/*.md -maxdepth 0 -exec cp {} docs/ \; 2>/dev/null || true
-          # Build the final site
-          mkdocs build -d site_output
+          # Build the final site from docs directory
+          cd docs && mkdocs build -d ../site_output
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
