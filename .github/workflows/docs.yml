@@ -22,9 +22,9 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Setup Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
-          python-version: "3.10"
+          python-version: "3.12"
 
       - name: Install MkDocs Dependencies
         run: |
@@ -46,8 +46,8 @@ jobs:
       - name: Build MkDocs Site
         run: |
           cp README.md docs/index.md
-          # Build the final site to site_output at root
-          (cd docs && mkdocs build -d ../site_output)
+          # Build the final site (mkdocs will use docs/ as docs_dir by default)
+          mkdocs build -d ../site_output
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
