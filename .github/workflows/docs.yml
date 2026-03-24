@@ -23,96 +23,24 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v5
 
-      - name: Setup .NET (for Natural Docs)
-        uses: actions/setup-dotnet@v4
+      - name: Setup Python
+        uses: actions/setup-python@v5
         with:
-          dotnet-version: '8.0.x'
+          python-version: '3.12'
 
-      - name: Download Natural Docs
-        run: |
-          curl -L -A "Mozilla/5.0" \
-            "https://www.naturaldocs.org/download/natural_docs/2.4/Natural_Docs_2.4_Development_Release_2.Linux.x64.zip" \
-            -o nd.zip
-          unzip -o nd.zip -d natural_docs_bin
-          ls -la "natural_docs_bin/"
-          chmod +x "natural_docs_bin/Natural Docs/NaturalDocs"
-          file "natural_docs_bin/Natural Docs/NaturalDocs"
+      - name: Install MkDocs
+        run: pip install mkdocs-material
 
-      - name: Verify source files exist
-        run: |
-          echo "=== Source files ==="
-          find src -name "*.odin" | sort
-          echo ""
-          echo "=== Natural Docs comments ==="
-          grep -rn "// Function:\|// Type:\|// Constant:\|// Variable:\|// Namespace:" src/ | head -20
-          echo ""
-          echo "=== Config files ==="
-          ls -la tools/natural_docs/nd_config/
+      - name: Generate docs from Natural Docs comments
+        run: python tools/generate_docs.py
 
-      - name: Generate API Docs (Natural Docs)
-        run: |
-          mkdir -p site_output
-          ./"natural_docs_bin/Natural Docs/NaturalDocs" \
-            -i src \
-            -o HTML site_output \
-            -p tools/natural_docs/nd_config \
-            -r -v || true
-          echo ""
-          echo "=== Output files ==="
-          find site_output -type f | head -30
-          echo ""
-          echo "=== Output size ==="
-          du -sh site_output/
-
-      - name: Create fallback index if empty
-        run: |
-          if [ ! -f site_output/index.html ]; then
-            echo "No index.html found, creating fallback page"
-            cat > site_output/index.html << 'HEREDOC'
-          <!DOCTYPE html>
-          <html lang="en">
-          <head>
-            <meta charset="UTF-8">
-            <title>Osteon Compiler Documentation</title>
-            <style>
-              body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; max-width: 800px; margin: 40px auto; padding: 0 20px; color: #333; }
-              h1 { color: #0366d6; }
-              code { background: #f6f8fa; padding: 2px 6px; border-radius: 3px; }
-              pre { background: #f6f8fa; padding: 16px; border-radius: 6px; overflow-x: auto; }
-              a { color: #0366d6; }
-            </style>
-          </head>
-          <body>
-            <h1>Osteon Compiler</h1>
-            <p>A register-based, low-level programming language compiler targeting x86-64 PE32+ and COFF.</p>
-            <h2>Source Files</h2>
-            <ul>
-              <li><code>src/compiler/ast.odin</code> - Abstract Syntax Tree types</li>
-              <li><code>src/compiler/lexer.odin</code> - Lexical analysis</li>
-              <li><code>src/compiler/parser.odin</code> - Syntax analysis</li>
-              <li><code>src/compiler/x86_64.odin</code> - x86-64 code generation</li>
-              <li><code>src/compiler/pe32.odin</code> - PE32+ executable emitter</li>
-              <li><code>src/compiler/coff.odin</code> - COFF object file emitter</li>
-              <li><code>src/compiler/desugar.odin</code> - Desugaring pass</li>
-              <li><code>src/compiler/error.odin</code> - Error reporting engine</li>
-              <li><code>src/compiler/const_eval.odin</code> - Compile-time evaluation</li>
-              <li><code>src/compiler/layout.odin</code> - Struct layout resolution</li>
-              <li><code>src/compiler/width.odin</code> - Width consistency checking</li>
-              <li><code>src/compiler/modrm.odin</code> - ModR/M and REX encoding</li>
-              <li><code>src/compiler/namespace.odin</code> - Package namespace resolution</li>
-              <li><code>src/compiler/import.odin</code> - Package import loading</li>
-            </ul>
-            <h2>Repository</h2>
-            <p><a href="https://github.com/tantalumv/Osteon">github.com/tantalumv/Osteon</a></p>
-          </body>
-          </html>
-          HEREDOC
-          fi
+      - name: Build MkDocs site
+        run: mkdocs build --strict
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: 'site_output'
+          path: 'site'
 
   deploy:
     needs: build

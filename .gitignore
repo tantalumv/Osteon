@@ -40,3 +40,4 @@ tools/ml/models/**
 
 # Gemini CLI internal state
 .gemini/
+site/

@@ -1,43 +1,66 @@
-site_name: Osteon Documentation
-site_description: Structured Assembly for Systems Engineers and LLM Agents
-site_author: Osteon Project
+site_name: Osteon Compiler
+site_description: Documentation for the Osteon compiler
+site_url: https://tantalumv.github.io/Osteon/
+repo_url: https://github.com/tantalumv/Osteon
+repo_name: tantalumv/Osteon
 
-docs_dir: docs
+docs_dir: docs/docs
 
 theme:
-  name: terminal
-  palette: dark
-  # Terminal theme specific settings
-  font:
-    family: 'JetBrains Mono'
-    code: 'JetBrains Mono'
+  name: material
+  palette:
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: blue
+      accent: amber
+      toggle:
+        icon: material/brightness-7
+        name: Switch to light mode
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: blue
+      accent: amber
+      toggle:
+        icon: material/brightness-4
+        name: Switch to dark mode
   features:
-    - navigation.expand
+    - navigation.instant
     - navigation.tabs
+    - navigation.sections
+    - navigation.expand
+    - navigation.top
+    - search.suggest
+    - search.highlight
+    - content.code.copy
     - toc.follow
-
-plugins:
-  - search
-  - awesome-nav
 
 nav:
   - Home: index.md
-  - Guide: guides/Developer-Guide.md
-  - Specification: specs/Osteon-Spec.md
-  - Progress: specs/Osteon-progress.md
-  - Performance: specs/Osteon-perf-expansion.md
-  - ML Integration: specs/Osteon-ml-spec.md
-  - API Reference: api/index.html  # This will link to the Natural Docs output
+  - Modules:
+    - Main: modules/main.md
+    - Lexer: modules/lexer.md
+    - Parser: modules/parser.md
+    - AST: modules/ast.md
+    - Errors: modules/error.md
+    - x86_64: modules/x86_64.md
+    - PE32+: modules/pe32.md
+    - COFF: modules/coff.md
+    - Desugar: modules/desugar.md
+    - Const Eval: modules/const_eval.md
+    - Layout: modules/layout.md
+    - Width: modules/width.md
+    - ModR/M: modules/modrm.md
+    - Namespace: modules/namespace.md
+    - Import: modules/import.md
 
 markdown_extensions:
   - pymdownx.highlight:
       anchor_linenums: true
-      line_spans: __span
-      pygments_lang_class: true
-  - pymdownx.inlinehilite
-  - pymdownx.snippets
   - pymdownx.superfences
-  - tables
+  - pymdownx.tabbed:
+      alternate_style: true
   - admonition
+  - pymdownx.details
+  - tables
   - toc:
       permalink: true
