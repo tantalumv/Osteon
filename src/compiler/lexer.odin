@@ -6,6 +6,10 @@ import "core:unicode/utf8"
 import "core:strings"
 import "core:strconv"
 
+// Type: Lexer
+// The lexer state machine that tracks the current position within source text.
+// Maintains file name, source string, byte offset, line/column position,
+// and the current rune being examined.
 Lexer :: struct {
 	file:      string,
 	source:    string,
@@ -15,6 +19,9 @@ Lexer :: struct {
 	curr_char: rune,
 }
 
+// Function: init_lexer
+// Creates and initializes a new Lexer for the given file and source string.
+// Advances to the first character before returning.
 init_lexer :: proc(file: string, source: string) -> Lexer {
 	l := Lexer {
 		file   = file,
@@ -26,6 +33,10 @@ init_lexer :: proc(file: string, source: string) -> Lexer {
 	return l
 }
 
+// Function: advance_char
+// Moves the lexer forward by one UTF-8 encoded rune.
+// Updates the line and column counters accordingly.
+// Sets curr_char to 0 when the end of the source is reached.
 advance_char :: proc(l: ^Lexer) {
 	if l.offset < len(l.source) {
 		r, size := utf8.decode_rune_in_string(l.source[l.offset:])
@@ -42,6 +53,9 @@ advance_char :: proc(l: ^Lexer) {
 	}
 }
 
+// Function: peek_char
+// Returns the next rune in the source without advancing the lexer position.
+// Returns 0 if the end of the source has been reached.
 peek_char :: proc(l: Lexer) -> rune {
 	if l.offset < len(l.source) {
 		r, _ := utf8.decode_rune_in_string(l.source[l.offset:])
@@ -50,6 +64,11 @@ peek_char :: proc(l: Lexer) -> rune {
 	return 0
 }
 
+// Function: next_token
+// Consumes and returns the next token from the source.
+// Skips whitespace and comments before lexing the token.
+// Recognizes symbols, operators, numbers, strings, identifiers, keywords, and registers.
+// Returns an EOF token when the source is exhausted.
 next_token :: proc(l: ^Lexer) -> Token {
 	skip_whitespace_and_comments(l)
 
@@ -142,6 +161,9 @@ next_token :: proc(l: ^Lexer) -> Token {
 	return tok
 }
 
+// Function: skip_whitespace_and_comments
+// Advances the lexer past any whitespace characters and line comments.
+// Line comments begin with '#' and extend to the end of the line.
 skip_whitespace_and_comments :: proc(l: ^Lexer) {
 	for {
 		if is_whitespace(l.curr_char) {
@@ -156,6 +178,11 @@ skip_whitespace_and_comments :: proc(l: ^Lexer) {
 	}
 }
 
+// Function: lex_identifier_or_keyword
+// Lexes an identifier or keyword token starting from the current position.
+// An identifier consists of alphanumeric characters and underscores,
+// beginning with a letter or underscore. Checks the keyword table and
+// register list before classifying as a plain identifier.
 lex_identifier_or_keyword :: proc(l: ^Lexer) -> Token {
 	start_offset := l.offset - utf8.rune_size(l.curr_char)
 	start_loc := Src_Loc{l.file, l.line, l.col}
@@ -165,7 +192,7 @@ lex_identifier_or_keyword :: proc(l: ^Lexer) -> Token {
 	}
 
 	text := l.source[start_offset : l.offset - (l.curr_char == 0 ? 0 : utf8.rune_size(l.curr_char))]
-	
+
 	// Keywords
 	if kind, is_keyword := keywords[text]; is_keyword {
 		return Token{kind, text, start_loc}
@@ -179,6 +206,10 @@ lex_identifier_or_keyword :: proc(l: ^Lexer) -> Token {
 	return Token{.Identifier, text, start_loc}
 }
 
+// Function: lex_number
+// Lexes a numeric literal token starting from the current position.
+// Supports decimal integers, hexadecimal (0x), binary (0b), and octal (0o) prefixed integers,
+// as well as floating-point numbers with optional scientific notation.
 lex_number :: proc(l: ^Lexer) -> Token {
 	start_offset := l.offset - utf8.rune_size(l.curr_char)
 	start_loc := Src_Loc{l.file, l.line, l.col}
@@ -252,50 +283,72 @@ lex_number :: proc(l: ^Lexer) -> Token {
 	return Token{.Integer, text, start_loc}
 }
 
+// Function: lex_string
+// Lexes a double-quoted string literal token starting from the current position.
+// Handles escape sequences by skipping the character following a backslash.
+// Reports a fatal syntax error if the string is not terminated before end of source.
 lex_string :: proc(l: ^Lexer) -> Token {
 	start_loc := Src_Loc{l.file, l.line, l.col}
 	advance_char(l) // skip "
-	
+
 	start_offset := l.offset - utf8.rune_size(l.curr_char)
-	
+
 	for l.curr_char != '"' && l.curr_char != 0 {
 		if l.curr_char == '\\' {
 			advance_char(l)
 		}
 		advance_char(l)
 	}
-	
+
 	text := l.source[start_offset : l.offset - (l.curr_char == 0 ? 0 : utf8.rune_size(l.curr_char))]
-	
+
 	if l.curr_char == '"' {
 		advance_char(l)
 	} else {
 		report_error(.Fatal_Syntax, start_loc, "Unterminated string literal")
 	}
-	
+
 	return Token{.String, text, start_loc}
 }
 
+// Function: is_whitespace
+// Returns true if the given rune is a whitespace character:
+// space, tab, carriage return, or newline.
 is_whitespace :: proc(r: rune) -> bool {
 	return r == ' ' || r == '\t' || r == '\r' || r == '\n'
 }
 
+// Function: is_digit
+// Returns true if the given rune is an ASCII decimal digit ('0' through '9').
 is_digit :: proc(r: rune) -> bool {
 	return r >= '0' && r <= '9'
 }
 
+// Function: is_hex_digit
+// Returns true if the given rune is a valid hexadecimal digit:
+// '0'-'9', 'a'-'f', or 'A'-'F'.
 is_hex_digit :: proc(r: rune) -> bool {
 	return (r >= '0' && r <= '9') || (r >= 'a' && r <= 'f') || (r >= 'A' && r <= 'F')
 }
 
+// Function: is_alpha
+// Returns true if the given rune is an ASCII alphabetic character
+// ('a'-'z' or 'A'-'Z').
 is_alpha :: proc(r: rune) -> bool {
 	return (r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z')
 }
 
+// Function: is_alnum
+// Returns true if the given rune is an ASCII alphanumeric character.
+// Equivalent to is_alpha(r) || is_digit(r).
 is_alnum :: proc(r: rune) -> bool {
 	return is_alpha(r) || is_digit(r)
 }
 
+// Constant: keywords
+// Map of reserved language keywords to their corresponding Token_Kind values.
+// Includes control flow, declarations, type definitions, memory management,
+// and assertion-related keywords.
 keywords := map[string]Token_Kind {
 	"fn"            = .Fn,
 	"inline"        = .Inline,
@@ -330,6 +383,10 @@ keywords := map[string]Token_Kind {
 	"check_canary"  = .Check_Canary,
 }
 
+// Function: is_register
+// Returns true if the given text matches a recognized x86-64 register name.
+// Covers general-purpose registers at all widths (rax/ax/al, etc.),
+// R8-R15, rip, rflags, and SIMD registers (xmm0-xmm31, ymm0-ymm31, zmm0-zmm31).
 is_register :: proc(text: string) -> bool {
 	// x86-64 GPRs
 	gprs := []string{

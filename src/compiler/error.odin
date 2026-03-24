@@ -5,6 +5,11 @@ import "core:os"
 import "core:strings"
 import "core:encoding/json"
 
+// Constant: Error_Code
+// Enumerates all diagnostic error codes recognized by the Osteon compiler.
+// Codes are grouped by severity prefix (Fatal_, Warn_, Hint_) to make
+// classification obvious when reading source.
+
 Error_Code :: enum {
 	Fatal_Width,
 	Fatal_Uninit,
@@ -25,11 +30,20 @@ Error_Code :: enum {
 	Hint_Breakpoint,
 }
 
+// Constant: Error_Severity
+// Represents the severity level of a diagnostic. Fatal errors halt
+// compilation, warnings allow continuation, and hints are advisory.
+
 Error_Severity :: enum {
 	Fatal,
 	Warning,
 	Hint,
 }
+
+// Constant: error_severity_map
+// Lookup table that maps each Error_Code to its corresponding
+// Error_Severity. Used by report_error to determine whether
+// compilation should abort.
 
 error_severity_map := [Error_Code]Error_Severity {
 	.Fatal_Width     = .Fatal,
@@ -51,6 +65,11 @@ error_severity_map := [Error_Code]Error_Severity {
 	.Hint_Breakpoint  = .Hint,
 }
 
+// Constant: error_code_strings
+// Maps each Error_Code to a human-readable slash-separated string
+// (e.g. "fatal/syntax"). These strings are emitted in JSON output
+// and annotated terminal diagnostics.
+
 error_code_strings := [Error_Code]string {
 	.Fatal_Width     = "fatal/width",
 	.Fatal_Uninit    = "fatal/uninit",
@@ -71,11 +90,22 @@ error_code_strings := [Error_Code]string {
 	.Hint_Breakpoint  = "hint/breakpoint",
 }
 
+// Type: Error_Context
+// Captures the source lines surrounding an error for annotated output.
+// Contains up to two lines before the offending line and up to two
+// lines after it, providing visual context in terminal diagnostics.
+
 Error_Context :: struct {
 	before:    [dynamic]string,
 	offending: string,
 	after:     [dynamic]string,
 }
+
+// Type: JSON_Error
+// A single serializable error record emitted when the compiler is
+// running in JSON output mode. Includes source location, error code,
+// human-readable message, optional correction hint, and surrounding
+// source context.
 
 JSON_Error :: struct {
 	file:       string,
@@ -88,19 +118,40 @@ JSON_Error :: struct {
 	error_context: Error_Context,
 }
 
+// Type: Error_State
+// Global mutable state for the error reporting engine. Tracks whether
+// output should be JSON or annotated terminal text, color preference,
+// and the accumulated list of errors encountered so far.
+
 Error_State :: struct {
 	json_mode: bool,
 	no_color:  bool,
 	errors:    [dynamic]JSON_Error,
 }
 
+// Variable: global_error_state
+// The process-wide singleton error state. Initialized by
+// init_error_engine and mutated by report_error.
+
 global_error_state: Error_State
+
+// Function: init_error_engine
+// Initializes the global error reporting engine. Must be called once
+// before any calls to report_error. Sets whether output should be
+// JSON or annotated terminal text and whether ANSI colors are disabled.
 
 init_error_engine :: proc(json_mode: bool, no_color: bool) {
 	global_error_state.json_mode = json_mode
 	global_error_state.no_color = no_color
 	global_error_state.errors = make([dynamic]JSON_Error)
 }
+
+// Function: report_error
+// Reports a compiler diagnostic. Reads the source file at the given
+// location to collect surrounding context lines, appends the error
+// to global_error_state, and either prints an annotated terminal
+// message or queues it for JSON output. If the error severity is
+// Fatal, JSON errors are flushed and the process exits immediately.
 
 report_error :: proc(code: Error_Code, loc: Src_Loc, message: string, correction: string = "") {
 	severity := error_severity_map[code]
@@ -154,6 +205,11 @@ report_error :: proc(code: Error_Code, loc: Src_Loc, message: string, correction
 	}
 }
 
+// Function: print_annotated_error
+// Pretty-prints a single JSON_Error to stderr with line numbers,
+// the offending line highlighted, a caret pointing to the column,
+// and an optional correction hint.
+
 print_annotated_error :: proc(err: JSON_Error, severity: Error_Severity) {
 	fmt.eprintf("%s:%d:%d\n", err.file, err.line, err.col)
 
@@ -183,6 +239,11 @@ print_annotated_error :: proc(err: JSON_Error, severity: Error_Severity) {
 	fmt.eprintln()
 }
 
+
+// Function: flush_json_errors
+// Marshals all accumulated errors as pretty-printed JSON and writes
+// them to stderr. Called automatically when a Fatal error occurs in
+// JSON mode.
 
 flush_json_errors :: proc() {
 	if len(global_error_state.errors) > 0 {

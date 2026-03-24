@@ -5,7 +5,10 @@ import "core:os"
 import "core:strconv"
 import "core:strings"
 
-// parse_integer handles decimal, hex (0x), binary (0b), and octal (0o) literals.
+// Function: parse_integer
+// Parses a numeric string literal into a signed 64-bit integer.
+// Supports decimal, hexadecimal (0x/0X), binary (0b/0B), and octal (0o/0O) prefixes.
+// Returns the parsed value, or 0 on failure.
 parse_integer :: proc(text: string) -> i64 {
 	if strings.has_prefix(text, "0x") || strings.has_prefix(text, "0X") {
 		val, _ := strconv.parse_int(text[2:], 16)
@@ -23,23 +26,34 @@ parse_integer :: proc(text: string) -> i64 {
 	return val
 }
 
+// Type: Parser
+// Incremental token-stream parser that consumes a Lexer and produces an AST.
+// Tracks the current and previous tokens for lookahead and context during parsing.
 Parser :: struct {
 	lexer: Lexer,
 	curr:  Token,
 	prev:  Token,
 }
 
+// Function: init_parser
+// Creates a new Parser from the given Lexer and advances to the first token.
+// Returns the initialized Parser ready for parsing.
 init_parser :: proc(lexer: Lexer) -> Parser {
 	p := Parser{lexer = lexer}
 	advance_token(&p)
 	return p
 }
 
+// Function: advance_token
+// Moves the parser forward by one token, storing the previous token for backtracking.
 advance_token :: proc(p: ^Parser) {
 	p.prev = p.curr
 	p.curr = next_token(&p.lexer)
 }
 
+// Function: expect_token
+// Asserts the current token matches the expected kind and advances on success.
+// Reports a fatal syntax error and returns a zero-value token on mismatch.
 expect_token :: proc(p: ^Parser, kind: Token_Kind) -> Token {
 	if p.curr.kind == kind {
 		tok := p.curr
@@ -50,6 +64,9 @@ expect_token :: proc(p: ^Parser, kind: Token_Kind) -> Token {
 	return {}
 }
 
+// Function: match_token
+// Conditionally consumes the current token if it matches the expected kind.
+// Returns true if a match occurred and the token was advanced past.
 match_token :: proc(p: ^Parser, kind: Token_Kind) -> bool {
 	if p.curr.kind == kind {
 		advance_token(p)
@@ -58,6 +75,9 @@ match_token :: proc(p: ^Parser, kind: Token_Kind) -> bool {
 	return false
 }
 
+// Function: parse_program
+// Entry point for parsing an entire source file into a Program AST node.
+// Repeatedly parses top-level statements until EOF is reached.
 parse_program :: proc(p: ^Parser) -> ^Program {
 	prog := new(Program)
 	prog.stmts = make([dynamic]Stmt)
@@ -72,6 +92,9 @@ parse_program :: proc(p: ^Parser) -> ^Program {
 	return prog
 }
 
+// Function: parse_top_level
+// Dispatches parsing of a single top-level declaration based on the current token kind.
+// Handles namespace, import, const, struct, data, extern, fn, static_assert, result, section, and global declarations.
 parse_top_level :: proc(p: ^Parser) -> Stmt {
 	#partial switch p.curr.kind {
 	case .Namespace: return parse_namespace_decl(p)
@@ -97,6 +120,8 @@ parse_top_level :: proc(p: ^Parser) -> Stmt {
 	}
 }
 
+// Function: parse_namespace_decl
+// Parses a namespace declaration consisting of the 'namespace' keyword followed by an identifier name.
 parse_namespace_decl :: proc(p: ^Parser) -> Stmt {
 	loc := p.curr.src_loc
 	advance_token(p) // namespace
@@ -106,6 +131,8 @@ parse_namespace_decl :: proc(p: ^Parser) -> Stmt {
 	return res
 }
 
+// Function: parse_import_decl
+// Parses an import declaration with a string path and optional 'as' alias.
 parse_import_decl :: proc(p: ^Parser) -> Stmt {
 	loc := p.curr.src_loc
 	advance_token(p) // import
@@ -119,6 +146,8 @@ parse_import_decl :: proc(p: ^Parser) -> Stmt {
 	return res
 }
 
+// Function: parse_const_decl
+// Parses a compile-time constant declaration with a name, '=' sign, and constant expression.
 parse_const_decl :: proc(p: ^Parser) -> Stmt {
 	loc := p.curr.src_loc
 	advance_token(p) // const
@@ -130,6 +159,9 @@ parse_const_decl :: proc(p: ^Parser) -> Stmt {
 	return res
 }
 
+// Function: parse_struct_decl
+// Parses a struct declaration with an optional layout(soa) modifier.
+// Structs contain typed fields separated by commas within braces.
 parse_struct_decl :: proc(p: ^Parser) -> Stmt {
 	loc := p.curr.src_loc
 	layout := Layout_Kind.AoS
@@ -166,6 +198,9 @@ parse_struct_decl :: proc(p: ^Parser) -> Stmt {
 	return res
 }
 
+// Function: parse_data_decl
+// Parses a data declaration with optional static storage, type annotation, and initializer.
+// Supports primitive types, struct names, and array types.
 parse_data_decl :: proc(p: ^Parser) -> Stmt {
 	loc := p.curr.src_loc
 	is_static := match_token(p, .Static)
@@ -202,6 +237,8 @@ parse_data_decl :: proc(p: ^Parser) -> Stmt {
 	return res
 }
 
+// Function: parse_extern_decl
+// Parses an extern declaration that references an external symbol by name.
 parse_extern_decl :: proc(p: ^Parser) -> Stmt {
 	loc := p.curr.src_loc
 	advance_token(p) // extern
@@ -211,6 +248,10 @@ parse_extern_decl :: proc(p: ^Parser) -> Stmt {
 	return res
 }
 
+// Function: parse_fn_decl
+// Parses a function declaration with optional inline or static modifiers.
+// Functions contain a body of statements enclosed in braces.
+// Returns an Inline_Fn_Decl or Fn_Decl depending on the modifier.
 parse_fn_decl :: proc(p: ^Parser) -> Stmt {
 	loc := p.curr.src_loc
 	is_inline := match_token(p, .Inline)
@@ -243,6 +284,9 @@ parse_fn_decl :: proc(p: ^Parser) -> Stmt {
 	}
 }
 
+// Function: parse_static_assert
+// Parses a static assertion that evaluates a constant expression at compile time.
+// Optionally accepts a string message displayed on failure.
 parse_static_assert :: proc(p: ^Parser) -> Stmt {
 	loc := p.curr.src_loc
 	advance_token(p) // static_assert
@@ -258,7 +302,9 @@ parse_static_assert :: proc(p: ^Parser) -> Stmt {
 	return res
 }
 
-// result(type) — contract annotation, emits no code
+// Function: parse_result_decl
+// Parses a result(type) contract annotation that specifies the return type of a function.
+// Emits no executable code; serves as a type-level contract.
 parse_result_decl :: proc(p: ^Parser) -> Stmt {
 	loc := p.curr.src_loc
 	advance_token(p) // result
@@ -270,7 +316,9 @@ parse_result_decl :: proc(p: ^Parser) -> Stmt {
 	return res
 }
 
-// global fn or global data — equivalent to static fn/static data
+// Function: parse_global_decl
+// Parses a global declaration, which is equivalent to a static function or static data declaration.
+// Dispatches to fn or data parsing paths based on the token following 'global'.
 parse_global_decl :: proc(p: ^Parser) -> Stmt {
 	loc := p.curr.src_loc
 	advance_token(p) // global
@@ -336,8 +384,9 @@ parse_global_decl :: proc(p: ^Parser) -> Stmt {
 	}
 }
 
-// --- Internal Parsers ---
-
+// Function: parse_type
+// Parses a type token and returns the corresponding Width enum value.
+// Supports u8, u16, u32, u64, f32, and f64 type keywords.
 parse_type :: proc(p: ^Parser) -> Width {
 	tok := p.curr
 	advance_token(p)
@@ -354,6 +403,9 @@ parse_type :: proc(p: ^Parser) -> Width {
 	}
 }
 
+// Function: parse_const_expr
+// Parses a compile-time constant expression, handling literals, identifiers, and binary operators.
+// Uses left-to-right precedence with recursive descent for binary operator chaining.
 parse_const_expr :: proc(p: ^Parser) -> Const_Expr {
 	// Simplified: handle literals, identifiers, and basic binops
 	// Recursion for binops should follow precedence, but for now simple left-to-right or single atoms
@@ -372,6 +424,10 @@ parse_const_expr :: proc(p: ^Parser) -> Const_Expr {
 	return lhs
 }
 
+// Function: parse_const_atom
+// Parses a single atomic constant expression such as an integer, float, identifier,
+// parenthesized sub-expression, or unary operator (minus/tilde).
+// Handles built-in intrinsics like SIZEOF, ALIGNOF, SIZEOF_SOA, @offset, and @soa_offset.
 parse_const_atom :: proc(p: ^Parser) -> Const_Expr {
 	tok := p.curr
 	advance_token(p)
@@ -464,6 +520,10 @@ parse_const_atom :: proc(p: ^Parser) -> Const_Expr {
 	}
 }
 
+// Function: is_binop
+// Returns true if the given token kind is a binary operator.
+// Covers arithmetic (+, -, *, /, %), shift (<<, >>), bitwise (&, |, ^),
+// and comparison (==, !=, <, <=, >, >=) operators.
 is_binop :: proc(kind: Token_Kind) -> bool {
 	// +, -, *, /, %, <<, >>, &, |, ^, ==, !=, <, <=, >, >=
 	#partial switch kind {
@@ -473,6 +533,9 @@ is_binop :: proc(kind: Token_Kind) -> bool {
 	}
 }
 
+// Function: parse_data_value
+// Parses a data initializer value, which may be an integer, float, string literal,
+// array literal (bracket-enclosed list), or struct initializer (brace-enclosed key-value pairs).
 parse_data_value :: proc(p: ^Parser) -> Data_Value {
 	tok := p.curr
 	advance_token(p)
@@ -516,6 +579,10 @@ parse_data_value :: proc(p: ^Parser) -> Data_Value {
 	}
 }
 
+// Function: parse_fn_stmt
+// Parses a single statement within a function body.
+// Handles instruction prefixes (lock, likely, unlikely), let bindings, labels, arena allocations,
+// for/while loops, assertions, and plain instructions.
 parse_fn_stmt :: proc(p: ^Parser) -> Stmt {
 	loc := p.curr.src_loc
 
@@ -714,6 +781,9 @@ parse_fn_stmt :: proc(p: ^Parser) -> Stmt {
 	}
 }
 
+// Function: parse_instruction
+// Parses a single machine instruction with its opcode, optional width annotation, and operands.
+// Handles special opcodes like prefetch(hint) that modify the opcode string based on a parenthesized argument.
 parse_instruction :: proc(p: ^Parser) -> ^Instr {
 	loc := p.curr.src_loc
 	op := expect_token(p, .Identifier).text // opcode
@@ -781,6 +851,9 @@ parse_instruction :: proc(p: ^Parser) -> ^Instr {
 	return res
 }
 
+// Function: is_keyword_starting_stmt
+// Returns true if the given token kind introduces a new statement (e.g., let, label, for, while, assert).
+// Used to terminate operand parsing when a new statement keyword appears.
 is_keyword_starting_stmt :: proc(kind: Token_Kind) -> bool {
 	#partial switch kind {
 	case .Let, .Label, .Arena, .Alloc, .Reset, .For, .While, .Assert, .Expect, .Breakpoint, .Unreachable, .Canary, .Check_Canary: return true
@@ -788,6 +861,9 @@ is_keyword_starting_stmt :: proc(kind: Token_Kind) -> bool {
 	}
 }
 
+// Function: can_start_operand
+// Returns true if the given token kind can begin an operand expression.
+// Valid operand-starting tokens include identifiers, registers, literals, parentheses, and unary operators.
 can_start_operand :: proc(kind: Token_Kind) -> bool {
 	#partial switch kind {
 	case .Identifier, .Register, .Integer, .Float, .String, .Paren_Open, .Minus, .Tilde: return true
@@ -797,8 +873,11 @@ can_start_operand :: proc(kind: Token_Kind) -> bool {
 	}
 }
 
-// Known instruction opcodes — used to prevent the operand loop from
-// greedily consuming the next instruction's opcode as an operand.
+// Function: is_known_opcode
+// Returns true if the given text matches a known instruction opcode mnemonic.
+// Used to prevent the operand loop from greedily consuming the next instruction's
+// opcode as an operand of the current instruction.
+// Covers control flow, ALU, shift, data movement, SSE scalar, SIMD, atomics, and cache instructions.
 is_known_opcode :: proc(text: string) -> bool {
 	switch text {
 	// Control flow
@@ -873,6 +952,10 @@ is_known_opcode :: proc(text: string) -> bool {
 	return false
 }
 
+// Function: parse_operand
+// Parses a single instruction operand, which may be a memory reference (deref),
+// an immediate value (imm), a qualified name (name::member), a register, or a plain identifier.
+// Handles both 2-arg deref(base, offset) and 4-arg deref(base, index, scale, offset) forms.
 parse_operand :: proc(p: ^Parser) -> Operand {
 	tok := p.curr
 	

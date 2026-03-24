@@ -4,6 +4,9 @@ package compiler
 // ModR/M Byte: [ mod: 2 bits ][ reg: 3 bits ][ rm: 3 bits ]
 // SIB Byte:    [ scale: 2 bits ][ index: 3 bits ][ base: 3 bits ]
 
+// Type: Mod
+// ModR/M addressing mode field. Encodes the addressing mode for the
+// ModR/M byte: indirect, with 8/32-bit displacement, or direct register.
 Mod :: enum u8 {
 	Indirect       = 0b00, // [reg]
 	Disp8          = 0b01, // [reg + d8]
@@ -11,10 +14,16 @@ Mod :: enum u8 {
 	DirectRegister = 0b11, // reg
 }
 
+// Function: encode_modrm
+// Encodes a ModR/M byte from addressing mode, register, and r/m fields.
+// Returns [mod:2][reg:3][rm:3] packed into a single byte.
 encode_modrm :: proc(mod: Mod, reg: u8, rm: u8) -> u8 {
 	return (u8(mod) << 6) | ((reg & 0b111) << 3) | (rm & 0b111)
 }
 
+// Function: encode_sib
+// Encodes a SIB (Scale-Index-Base) byte. Converts the scale factor (1/2/4/8)
+// to its 2-bit encoding and packs with index and base register fields.
 encode_sib :: proc(scale: u8, index: u8, base: u8) -> u8 {
 	// scale: 0=1, 1=2, 2=4, 3=8
 	s_bits: u8
@@ -33,6 +42,9 @@ encode_sib :: proc(scale: u8, index: u8, base: u8) -> u8 {
 // X: Extension of SIB 'index' field (bit 3)
 // B: Extension of ModR/M 'r/m', SIB 'base', or opcode 'reg' field (bit 3)
 
+// Function: encode_rex
+// Encodes a REX prefix byte [0100WRXB]. W enables 64-bit operand size,
+// R/X/B extend the ModR/M reg, SIB index, or ModR/M r/m field respectively.
 encode_rex :: proc(w, r, x, b: bool) -> u8 {
 	rex: u8 = 0b01000000
 	if w do rex |= (1 << 3)
@@ -42,8 +54,9 @@ encode_rex :: proc(w, r, x, b: bool) -> u8 {
 	return rex
 }
 
-// Register mapping for x86-64
-// Note: r8-r15 set the REX.B/R/X bits.
+// Constant: reg_to_id
+// Maps register name strings to their x86-64 hardware register ID (0-15).
+// Covers GPRs at all widths, legacy high-byte registers, and XMM registers.
 reg_to_id := map[string]u8 {
 	// 64-bit
 	"rax" = 0, "rcx" = 1, "rdx" = 2, "rbx" = 3,
@@ -74,6 +87,9 @@ reg_to_id := map[string]u8 {
 	"xmm12" = 12, "xmm13" = 13, "xmm14" = 14, "xmm15" = 15,
 }
 
+// Function: is_ext_reg
+// Returns true if the register ID requires a REX extension bit (id >= 8),
+// meaning it refers to registers r8-r15 or their width variants.
 is_ext_reg :: proc(id: u8) -> bool {
 	return id >= 8
 }

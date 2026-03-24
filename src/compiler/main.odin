@@ -7,6 +7,27 @@ import "core:path/filepath"
 import "core:strings"
 import "core:strconv"
 
+/* Type: Compiler_Options
+ * Compiler configuration options structure.
+ *
+ * Fields:
+ *   target - target architecture/platform (e.g., "x86_64-windows")
+ *   emit - output format ("exe" or "obj")
+ *   out - output file path
+ *   release - enable release mode optimizations
+ *   check - run type checking only without codegen
+ *   dry_run - print desugared AST without emitting
+ *   debug - include debug information
+ *   explain - error code to explain
+ *   json - use JSON output format for errors
+ *   no_color - disable colored output
+ *   test - run test suite
+ *   safe - enable checked access, canaries, provenance
+ *   sanitize - enable full shadow memory instrumentation
+ *   unsafe - disable all safety checks (default)
+ *   test_dir - directory to scan for tests (default: tests/valid)
+ */
+
 // Flags as per Section 17
 Compiler_Options :: struct {
 	target:   string,
@@ -26,6 +47,10 @@ Compiler_Options :: struct {
 	test_dir: string,  // --test <dir>: directory to scan for tests (default: tests/valid)
 }
 
+/* Function: main
+ * Compiler entry point. Parses command-line arguments, loads packages,
+ * runs the compilation pipeline, and emits the target executable or object file.
+ */
 main :: proc() {
 	options: Compiler_Options
 	options.target = "x86_64-windows"
@@ -234,6 +259,12 @@ main :: proc() {
 	fmt.println("Codegen not yet implemented.")
 }
 
+/* Function: explain_error
+ * Prints a detailed explanation for a compiler error code.
+ *
+ * Parameters:
+ *   code - the error code to explain (e.g., "fatal/width", "warn/dead")
+ */
 explain_error :: proc(code: string) {
 	explanations := map[string]string {
 		"fatal/width"       = "An instruction's width annotation (e.g., u64) does not match the register width. Example: mov(u64) eax, rbx — eax is 32-bit, u64 is 64-bit. Fix: use the matching width or register.",
@@ -261,6 +292,13 @@ explain_error :: proc(code: string) {
 		fmt.println("             hint/noret hint/breakpoint")
 	}
 }
+
+/* Function: run_tests
+ * Runs the test suite by compiling and executing test files.
+ *
+ * Parameters:
+ *   test_dir - directory containing test files (default: "tests/valid")
+ */
 
 run_tests :: proc(test_dir: string = "tests/valid") {
 	fmt.printf("Osteon v0.3.0 — Test Runner\n")
@@ -346,6 +384,16 @@ run_tests :: proc(test_dir: string = "tests/valid") {
 	}
 }
 
+/* Function: parse_expected_exit_code
+ * Extracts the expected exit code from a test filename.
+ * The filename format is: name.exitcode.ostn (e.g., test.0.ostn)
+ *
+ * Parameters:
+ *   filename - the test filename to parse
+ *
+ * Returns: the expected exit code as an integer, or 0 if not found
+ */
+
 parse_expected_exit_code :: proc(filename: string) -> int {
 	if !strings.has_suffix(filename, ".ostn") {
 		return 0
@@ -372,6 +420,16 @@ parse_expected_exit_code :: proc(filename: string) -> int {
 // ================================================================
 // --release stripping
 // ================================================================
+
+/* Function: strip_release
+ * Removes debug-only instructions from a function body for release builds.
+ * Strips breakpoint instructions (int3/breakpoint) and removes assert traps.
+ *
+ * Parameters:
+ *   body - the list of statements representing the function body
+ *
+ * Returns: a new dynamic array of statements with release-safe instructions only
+ */
 
 // strip_release removes assert traps and breakpoint instructions.
 // - ud2 from assert is removed (assert desugared to: cmp; jcc; ud2; label)
@@ -408,6 +466,14 @@ strip_release :: proc(body: []Stmt) -> [dynamic]Stmt {
 // Pass 7: Inline fn expansion
 // ================================================================
 
+/* Function: expand_inline_fns
+ * Expands inline function bodies at all call sites across packages.
+ * Collects all inline function declarations and expands them in regular functions.
+ *
+ * Parameters:
+ *   packages - slice of packages containing functions to process
+ */
+
 expand_inline_fns :: proc(packages: []^Package) {
 	// Collect all inline functions across packages
 	inline_fns := make(map[string][]Stmt)
@@ -432,6 +498,18 @@ expand_inline_fns :: proc(packages: []^Package) {
 		}
 	}
 }
+
+/* Function: expand_inline_in_body
+ * Walks a function body and expands any call to an inline function.
+ * Supports both zero-operand inline calls and explicit call instructions.
+ * Also handles mangled namespace syntax (ns::fn).
+ *
+ * Parameters:
+ *   body - the list of statements representing the function body
+ *   inline_fns - pointer to map of inline function names to their bodies
+ *
+ * Returns: a new dynamic array of statements with inline functions expanded
+ */
 
 // Walk a function body and expand any call to an inline function
 expand_inline_in_body :: proc(body: []Stmt, inline_fns: ^map[string][]Stmt) -> [dynamic]Stmt {
@@ -504,6 +582,14 @@ expand_inline_in_body :: proc(body: []Stmt, inline_fns: ^map[string][]Stmt) -> [
 // Alias resolution — rewrite let aliases to register names
 // ================================================================
 
+/* Function: resolve_aliases
+ * Rewrites let alias declarations to their underlying register names.
+ * Collects alias->register mappings and updates all instruction operands.
+ *
+ * Parameters:
+ *   body - the list of statements representing the function body
+ */
+
 resolve_aliases :: proc(body: []Stmt) {
 	// Collect alias → register mappings
 	alias_map := make(map[string]string)
@@ -531,6 +617,14 @@ resolve_aliases :: proc(body: []Stmt) {
 // --dry-run: print desugared AST
 // ================================================================
 
+/* Function: print_desugared_body
+ * Prints the desugared AST representation of a function body in a readable format.
+ * Outputs instructions, labels, and let declarations with their operands.
+ *
+ * Parameters:
+ *   body - the list of statements representing the function body to print
+ */
+
 print_desugared_body :: proc(body: []Stmt) {
 	for s in body {
 		#partial switch v in s {
@@ -555,6 +649,14 @@ print_desugared_body :: proc(body: []Stmt) {
 		}
 	}
 }
+
+/* Function: print_operand
+ * Prints a single operand in a human-readable format.
+ * Handles string operands, immediate values, and memory references.
+ *
+ * Parameters:
+ *   op - the operand to print (string, Immediate, or Mem_Ref)
+ */
 
 print_operand :: proc(op: Operand) {
 	#partial switch v in op {
@@ -585,6 +687,16 @@ print_operand :: proc(op: Operand) {
 // Analysis passes (10-15)
 // ================================================================
 
+/* Function: is_terminating
+ * Determines whether an instruction terminates a basic block.
+ * Terminating instructions cannot be followed by reachable code.
+ *
+ * Parameters:
+ *   op - the opcode string to check (e.g., "ret", "jmp", "ud2")
+ *
+ * Returns: true if the instruction is a terminator, false otherwise
+ */
+
 is_terminating :: proc(op: string) -> bool {
 	switch op {
 	case "ret", "jmp", "ud2":
@@ -592,6 +704,15 @@ is_terminating :: proc(op: string) -> bool {
 	}
 	return false
 }
+
+/* Function: check_analysis_passes
+ * Runs all analysis passes on functions in the given packages.
+ * Executes unreachable, dead code, noret, clobber, uninit, and breakpoint checks.
+ *
+ * Parameters:
+ *   packages - slice of packages to analyze
+ *   is_debug - whether this is a debug build (affects breakpoint checking)
+ */
 
 check_analysis_passes :: proc(packages: []^Package, is_debug: bool) {
 	for pkg in packages {
@@ -615,6 +736,14 @@ check_analysis_passes :: proc(packages: []^Package, is_debug: bool) {
 		}
 	}
 }
+
+/* Function: check_canary_missing
+ * Checks if a function allocates stack space but does not have a canary.
+ * Reports a warning when --safe mode is enabled and stack allocation occurs without canary.
+ *
+ * Parameters:
+ *   fn - the function declaration to check
+ */
 
 // --safe: warn/canary_missing — function has alloc/stack usage but no canary
 check_canary_missing :: proc(fn: ^Fn_Decl) {
@@ -645,6 +774,17 @@ check_canary_missing :: proc(fn: ^Fn_Decl) {
 	}
 }
 
+/* Function: check_unreachable
+ * Reports warnings for instructions that appear after a terminating instruction.
+ * Labels reset reachability since code can jump to them.
+ *
+ * Parameters:
+ *   pkg - the package containing the function
+ *   fn_name - the name of the function being checked
+ *   body - the function body statements to analyze
+ *   fn_loc - the source location of the function for error reporting
+ */
+
 // Pass 12: warn/unreachable — instruction after ret/jmp/ud2
 check_unreachable :: proc(pkg: ^Package, fn_name: string, body: []Stmt, fn_loc: Src_Loc) {
 	after_terminator := false
@@ -665,6 +805,16 @@ check_unreachable :: proc(pkg: ^Package, fn_name: string, body: []Stmt, fn_loc: 
 	}
 }
 
+/* Function: check_breakpoint
+ * Reports hints for breakpoint instructions in non-debug builds.
+ * Warns when int3 or breakpoint instructions are present in release mode.
+ *
+ * Parameters:
+ *   pkg - the package containing the function
+ *   fn_name - the name of the function being checked
+ *   body - the function body statements to analyze
+ */
+
 // Pass 15: hint/breakpoint — int3 in non-debug build
 check_breakpoint :: proc(pkg: ^Package, fn_name: string, body: []Stmt) {
 	for s in body {
@@ -676,6 +826,16 @@ check_breakpoint :: proc(pkg: ^Package, fn_name: string, body: []Stmt) {
 		}
 	}
 }
+
+/* Function: check_dead_code
+ * Reports warnings for registers that are written but never read before the function returns.
+ * Analyzes instruction operands to track register reads and writes.
+ *
+ * Parameters:
+ *   pkg - the package containing the function
+ *   fn_name - the name of the function being checked
+ *   body - the function body statements to analyze
+ */
 
 // Pass 11: warn/dead — register written but never read before function returns
 check_dead_code :: proc(pkg: ^Package, fn_name: string, body: []Stmt) {
@@ -725,6 +885,16 @@ check_dead_code :: proc(pkg: ^Package, fn_name: string, body: []Stmt) {
 	}
 }
 
+/* Function: check_noret
+ * Reports hints for functions that may not return on all code paths.
+ * Checks if the last instruction in the function body is a terminator.
+ *
+ * Parameters:
+ *   pkg - the package containing the function
+ *   fn_name - the name of the function being checked
+ *   body - the function body statements to analyze
+ */
+
 // Pass 14: hint/noret — function may not return on all paths
 check_noret :: proc(pkg: ^Package, fn_name: string, body: []Stmt) {
 	if len(body) == 0 {
@@ -752,6 +922,17 @@ check_noret :: proc(pkg: ^Package, fn_name: string, body: []Stmt) {
 		}
 	}
 }
+
+/* Function: check_uninit
+ * Reports fatal errors for registers read before being written on any code path.
+ * Tracks initialized registers and marks function parameters as pre-initialized.
+ *
+ * Parameters:
+ *   pkg - the package containing the function
+ *   fn_name - the name of the function being checked
+ *   body - the function body statements to analyze
+ *   fn_loc - the source location of the function for error reporting
+ */
 
 // Pass 10: fatal/uninit — register read before being written on this path
 check_uninit :: proc(pkg: ^Package, fn_name: string, body: []Stmt, fn_loc: Src_Loc) {
@@ -813,6 +994,16 @@ check_uninit :: proc(pkg: ^Package, fn_name: string, body: []Stmt, fn_loc: Src_L
 		}
 	}
 }
+
+/* Function: check_clobber
+ * Reports warnings for caller-saved registers that may be clobbered by function calls.
+ * Tracks live registers and warns when a written register is read after a call.
+ *
+ * Parameters:
+ *   pkg - the package containing the function
+ *   fn_name - the name of the function being checked
+ *   body - the function body statements to analyze
+ */
 
 // Pass 13: warn/clobber — caller-saved register used after call
 check_clobber :: proc(pkg: ^Package, fn_name: string, body: []Stmt) {

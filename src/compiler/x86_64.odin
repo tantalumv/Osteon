@@ -8,8 +8,16 @@ import "core:strings"
 // Buffer primitives
 // ================================================================
 
+// Type: Instruction_Buffer
+// Dynamic byte buffer used for encoding machine instructions.
 Instruction_Buffer :: [dynamic]u8
 
+// Function: emit_byte
+// Appends a single byte to the instruction buffer.
+//
+// Parameters:
+//   buf - pointer to the instruction buffer
+//   b   - the byte to append
 emit_byte :: proc(buf: ^Instruction_Buffer, b: u8) {
 	append(buf, b)
 }
@@ -47,11 +55,17 @@ emit_imm64 :: proc(buf: ^Instruction_Buffer, imm: i64) {
 // Encoder context — tracks labels and jump patch sites
 // ================================================================
 
+// Type: Patch_Entry
+// Forward reference patch entry recording a label name and the buffer
+// offset where a 4-byte relative displacement must be back-patched.
 Patch_Entry :: struct {
 	label_name:  string,
 	buf_offset:  int, // offset of the 4-byte displacement in the buffer
 }
 
+// Type: Encoder_Context
+// Tracks the instruction buffer, label positions, and pending forward-
+// reference patches needed during x86-64 machine code emission.
 Encoder_Context :: struct {
 	buf:          Instruction_Buffer,
 	label_pos:    map[string]int,
@@ -60,6 +74,9 @@ Encoder_Context :: struct {
 	data_buf:     ^[dynamic]u8, // optional, populated during encoding for PE32
 }
 
+// Function: init_encoder
+// Allocates the instruction buffer, label map, and patch list for a new
+// encoding pass.
 init_encoder :: proc(ctx: ^Encoder_Context) {
 	ctx.buf = make(Instruction_Buffer)
 	ctx.label_pos = make(map[string]int)

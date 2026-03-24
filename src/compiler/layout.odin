@@ -4,6 +4,10 @@ package compiler
 import "core:fmt"
 import "core:strings"
 
+// Type: Struct_Info
+// Stores resolved layout information for a struct declaration. Tracks name,
+// byte size (AoS: with padding, SoA: per-element), alignment, layout kind,
+// field metadata, and SoA block size.
 Struct_Info :: struct {
 	name:      string,
 	size:      int,      // AoS: total size with padding. SoA: per-element size.
@@ -13,18 +17,29 @@ Struct_Info :: struct {
 	soa_block: int,      // SoA only: total block size for default capacity
 }
 
+// Type: Struct_Field_Info
+// Stores resolved layout information for a single struct field. Tracks the
+// field name, its Width type, and byte offset (AoS) or cumulative size index (SoA).
 Struct_Field_Info :: struct {
 	name:      string,
 	type:      Width,
 	offset:    int,      // AoS: byte offset from struct base. SoA: index for @soa_offset.
 }
 
+// Variable: global_structs
+// Global registry mapping struct names to their resolved Struct_Info.
+// Populated by resolve_struct_layout and queried during constant evaluation.
 global_structs: map[string]^Struct_Info
 
+// Function: init_layout_resolution
+// Initializes the global_structs map for struct layout resolution.
 init_layout_resolution :: proc() {
 	global_structs = make(map[string]^Struct_Info)
 }
 
+// Constant: width_to_size
+// Maps Width enum values to their byte sizes for use during struct
+// layout resolution and field offset computation.
 width_to_size := map[Width]int {
 	.U8  = 1,
 	.U16 = 2,
@@ -34,6 +49,11 @@ width_to_size := map[Width]int {
 	.F64 = 8,
 }
 
+// Function: resolve_struct_layout
+// Resolves the byte layout of a struct declaration. For AoS layout, computes
+// sequential field offsets with explicit padding enforcement. For SoA layout,
+// computes cumulative per-element sizes for interleaved array storage.
+// Registers the result in global_structs.
 resolve_struct_layout :: proc(decl: ^Struct_Decl, pkg: ^Package) {
 	info := new(Struct_Info)
 	info.name = decl.name

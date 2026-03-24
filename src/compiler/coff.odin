@@ -4,6 +4,9 @@ package compiler
 import "core:os"
 import "core:fmt"
 
+// Type: COFF_Header
+// The COFF file header containing machine type, section count, symbol table
+// pointer, and file characteristics.
 COFF_Header :: struct {
 	machine:              u16,
 	number_of_sections:   u16,
@@ -14,6 +17,9 @@ COFF_Header :: struct {
 	characteristics:       u16,
 }
 
+// Type: COFF_Section_Header
+// Describes a single section in a COFF object file, including its name,
+// virtual and raw data sizes, relocation table pointer, and flags.
 COFF_Section_Header :: struct {
 	name:                 [8]u8,
 	virtual_size:         u32,
@@ -27,6 +33,9 @@ COFF_Section_Header :: struct {
 	characteristics:       u32,
 }
 
+// Type: COFF_Symbol
+// A single entry in the COFF symbol table. Holds an 8-byte (or string-table-
+// referenced) name, value, section number, type, and storage class.
 COFF_Symbol :: struct {
 	name:                 [8]u8,
 	value:                u32,
@@ -36,17 +45,41 @@ COFF_Symbol :: struct {
 	number_of_aux_symbols: u8,
 }
 
+// Constant: IMAGE_FILE_MACHINE_AMD64
+// Machine type constant (0x8664) identifying AMD64 (x86-64) architecture.
 IMAGE_FILE_MACHINE_AMD64 :: 0x8664
+
+// Constant: IMAGE_FILE_CHARACTERISTICS_EXECUTABLE_IMAGE
+// COFF characteristics flag (0x0002) indicating the file is an executable.
 IMAGE_FILE_CHARACTERISTICS_EXECUTABLE_IMAGE :: 0x0002
+
+// Constant: IMAGE_SCN_CNT_CODE
+// Section flag (0x00000020) marking the section as containing executable code.
 IMAGE_SCN_CNT_CODE :: 0x00000020
+
+// Constant: IMAGE_SCN_CNT_INITIALIZED_DATA
+// Section flag (0x00000040) marking the section as containing initialized data.
 IMAGE_SCN_CNT_INITIALIZED_DATA :: 0x00000040
+
+// Constant: IMAGE_SCN_MEM_EXECUTE
+// Section flag (0x20000000) granting execute permission on the section.
 IMAGE_SCN_MEM_EXECUTE :: 0x20000000
+
+// Constant: IMAGE_SCN_MEM_READ
+// Section flag (0x40000000) granting read permission on the section.
 IMAGE_SCN_MEM_READ :: 0x40000000
+
+// Constant: IMAGE_SCN_MEM_WRITE
+// Section flag (0x80000000) granting write permission on the section.
 IMAGE_SCN_MEM_WRITE :: 0x80000000
 
 // Relocation types for AMD64
 IMAGE_REL_AMD64_REL32 :: 0x0004
 
+// Type: COFF_Relocation
+// A relocation entry that patches a reference to a symbol at a given virtual
+// address within a section. Fields include the target address, symbol index,
+// and relocation type.
 COFF_Relocation :: struct {
 	virtual_address:    u32,
 	symbol_table_index: u32,
@@ -57,11 +90,18 @@ COFF_Relocation :: struct {
 // String table for long symbol names (>8 bytes)
 // ============================================
 
+// Type: String_Table
+// Stores symbol names longer than 8 bytes. The first 4 bytes encode the
+// total table size, and strings are appended as null-terminated entries with
+// 1-based offsets.
 String_Table :: struct {
 	bytes:      [dynamic]u8,
 	next_offset: u32, // next available offset (1-based)
 }
 
+// Function: init_string_table
+// Initializes a String_Table, allocating storage and reserving the first 4
+// bytes for the total-size field.
 init_string_table :: proc(st: ^String_Table) {
 	st.bytes = make([dynamic]u8)
 	// Reserve 4 bytes for the total size field
@@ -72,7 +112,9 @@ init_string_table :: proc(st: ^String_Table) {
 	st.next_offset = 4 // first string starts at offset 4 (1-based = 4)
 }
 
-// Add a string to the string table. Returns the 1-based offset.
+// Function: string_table_add
+// Appends a null-terminated string to the string table and returns the
+// 1-based offset where it was placed.
 string_table_add :: proc(st: ^String_Table, s: string) -> u32 {
 	offset := st.next_offset
 	for _, b in s {
@@ -83,7 +125,9 @@ string_table_add :: proc(st: ^String_Table, s: string) -> u32 {
 	return offset
 }
 
-// Finalize: write the total size into the first 4 bytes
+// Function: string_table_finalize
+// Writes the total byte count into the first 4 bytes of the string table,
+// completing the header size field.
 string_table_finalize :: proc(st: ^String_Table) {
 	size := u32(len(st.bytes))
 	st.bytes[0] = u8(size & 0xFF)
@@ -92,7 +136,9 @@ string_table_finalize :: proc(st: ^String_Table) {
 	st.bytes[3] = u8((size >> 24) & 0xFF)
 }
 
-// Set symbol name: short (≤8 bytes) goes in the field, long goes in string table
+// Function: set_symbol_name
+// Sets the name field of a COFF symbol. Short names (<=8 bytes) are stored
+// inline; long names are added to the string table and referenced by offset.
 set_symbol_name :: proc(sym: ^COFF_Symbol, name: string, st: ^String_Table) {
 	if len(name) <= 8 {
 		// Short name: copy directly into the 8-byte field
@@ -115,6 +161,10 @@ set_symbol_name :: proc(sym: ^COFF_Symbol, name: string, st: ^String_Table) {
 // Main COFF emitter
 // ============================================
 
+// Function: emit_coff_obj
+// Emits a COFF object file to file_path. Encodes all functions into a .text
+// section, serializes data declarations into .data, builds the symbol table
+// and relocations, and writes the complete object file.
 emit_coff_obj :: proc(file_path: string, packages: [dynamic]^Package) {
 	str_tab: String_Table
 	init_string_table(&str_tab)
@@ -321,6 +371,10 @@ emit_coff_obj :: proc(file_path: string, packages: [dynamic]^Package) {
 // Data serialization helpers
 // ============================================
 
+// Function: serialize_data_value
+// Serializes a Data_Value into buf according to its type, dispatching to
+// write_integer for integer widths, write_float for floating-point widths,
+// byte copy for strings, and recursive calls for arrays and struct inits.
 serialize_data_value :: proc(buf: ^[dynamic]u8, val: Data_Value, width: Width) {
 	#partial switch v in val {
 	case i64:
@@ -350,6 +404,9 @@ serialize_data_value :: proc(buf: ^[dynamic]u8, val: Data_Value, width: Width) {
 	}
 }
 
+// Function: write_integer
+// Appends val as a little-endian integer to buf, using the byte width
+// specified by width. Handles U8, U16, U32, U64, F32, and F64 widths.
 write_integer :: proc(buf: ^[dynamic]u8, val: i64, width: Width) {
 	switch width {
 	case .U8:
@@ -390,6 +447,9 @@ write_integer :: proc(buf: ^[dynamic]u8, val: i64, width: Width) {
 	}
 }
 
+// Function: write_float
+// Appends val as a little-endian floating-point value to buf. Uses 4 bytes
+// for .F32 width and 8 bytes for .F64 width.
 write_float :: proc(buf: ^[dynamic]u8, val: f64, width: Width) {
 	if width == .F32 {
 		bits := f32_to_bits(f32(val))
@@ -410,10 +470,14 @@ write_float :: proc(buf: ^[dynamic]u8, val: f64, width: Width) {
 	}
 }
 
+// Function: f32_to_bits
+// Reinterprets an f32 value as its IEEE 754 bit representation (u32).
 f32_to_bits :: proc(f: f32) -> u32 {
 	return transmute(u32)f
 }
 
+// Function: f64_to_bits
+// Reinterprets an f64 value as its IEEE 754 bit representation (u64).
 f64_to_bits :: proc(f: f64) -> u64 {
 	return transmute(u64)f
 }

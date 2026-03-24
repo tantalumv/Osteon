@@ -64,8 +64,16 @@
 Language: Odin
    Extensions: odin
    Line Comments: //
-   Block Comments: /* */
+   Member Operator: ::
    Case Sensitive: yes
+
+   # Prototype enders — tell Natural Docs where prototypes stop
+   Function Prototype Enders: :: proc
+   Type Prototype Enders: :: struct \n
+   Type Prototype Enders: :: enum \n
+   Type Prototype Enders: :: union \n
+   Constant Prototype Enders: ::
+   Variable Prototype Enders: :
 
 # Properties for Basic Language Support Only
 # ------------------------------------------------------------------------

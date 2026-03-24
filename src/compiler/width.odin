@@ -4,8 +4,14 @@ package compiler
 import "core:fmt"
 import "core:strings"
 
+// Variable: register_widths
+// Maps register name strings to their Width values. Covers all x86-64
+// GPRs (64/32/16/8-bit) and XMM SIMD registers used for width checking.
 register_widths: map[string]Width
 
+// Function: init
+// Initializes the register_widths map with all known x86-64 register
+// names and their corresponding bit widths.
 init :: proc() {
 	register_widths = map[string]Width{
 		// GPR 64-bit
@@ -36,7 +42,9 @@ init :: proc() {
 	}
 }
 
-// Width_to_string returns the human-readable bit width.
+// Function: width_to_string
+// Returns the human-readable bit width string for a Width enum value
+// (e.g. "8", "16", "32", "64"). Returns "?" for unrecognized widths.
 width_to_string :: proc(w: Width) -> string {
 	switch w {
 	case .U8:  return "8"
@@ -49,7 +57,9 @@ width_to_string :: proc(w: Width) -> string {
 	return "?"
 }
 
-// format_operand renders a single operand for correction messages.
+// Function: format_operand
+// Renders a single operand as a human-readable string for error correction
+// messages. Handles register names, immediates, and memory references.
 format_operand :: proc(op: Operand) -> string {
 	#partial switch v in op {
 	case string:
@@ -69,7 +79,8 @@ format_operand :: proc(op: Operand) -> string {
 	return "??"
 }
 
-// format_operands renders operands as a comma-separated string.
+// Function: format_operands
+// Renders a list of operands as a comma-separated string using format_operand.
 format_operands :: proc(operands: []Operand) -> string {
 	sb := strings.builder_make()
 	for op, i in operands {
@@ -81,7 +92,9 @@ format_operands :: proc(operands: []Operand) -> string {
 	return strings.to_string(sb)
 }
 
-// format_instruction renders a full instruction for correction messages.
+// Function: format_instruction
+// Renders a full instruction including opcode, width annotation, and operands
+// as a human-readable string for error correction messages.
 format_instruction :: proc(instr: ^Instr) -> string {
 	operands_str := format_operands(instr.operands[:])
 	if instr.width != nil {
@@ -90,7 +103,9 @@ format_instruction :: proc(instr: ^Instr) -> string {
 	return fmt.tprintf("%s %s", instr.op, operands_str)
 }
 
-// CheckWidthConsistency checks that instruction widths match register widths.
+// Function: checkWidthConsistency
+// Entry point for width consistency checking. Iterates over all packages
+// and verifies that instruction width annotations match register operand widths.
 checkWidthConsistency :: proc(packages: []^Package) {
 	for pkg in packages {
 		for stmt in pkg.program.stmts {
@@ -106,8 +121,9 @@ checkWidthConsistency :: proc(packages: []^Package) {
 	}
 }
 
-// check_stmt_list_width recursively checks all instructions in a statement list,
-// including those nested inside for/while loops.
+// Function: check_stmt_list_width
+// Recursively checks all instructions in a statement list, including those
+// nested inside for/while loops. Tracks let-declaration aliases to registers.
 check_stmt_list_width :: proc(pkg: ^Package, alias_to_reg: ^map[string]string, stmts: []Stmt) {
 	for s in stmts {
 		#partial switch v in s {
@@ -125,6 +141,9 @@ check_stmt_list_width :: proc(pkg: ^Package, alias_to_reg: ^map[string]string, s
 	}
 }
 
+// Function: check_instruction_width
+// Validates a single instruction's width annotation against its register
+// operands. Reports Fatal_Width on mismatch or missing width annotation.
 check_instruction_width :: proc(pkg: ^Package, alias_to_reg: ^map[string]string, instr: ^Instr) {
 	width := instr.width
 	has_width := width != nil
@@ -173,7 +192,9 @@ check_instruction_width :: proc(pkg: ^Package, alias_to_reg: ^map[string]string,
 	}
 }
 
-// is_register checks if a string is a known register name.
+// Function: is_gpr_reg
+// Checks if a string is a known register name by looking it up in the
+// register_widths map. Returns true for valid GPR and XMM registers.
 is_gpr_reg :: proc(reg: string) -> bool {
 	_, exists := register_widths[reg]
 	return exists

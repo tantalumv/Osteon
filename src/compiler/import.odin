@@ -9,6 +9,10 @@ files_loading := map[string]bool{}
 // Track files already loaded (for diamond import dedup)
 loaded_files := map[string]^Package{}
 
+// Function: load_all_packages
+// Entry point for package loading. Initializes namespace resolution and
+// recursively loads the main file and all its transitive imports.
+// Returns all loaded packages collected from the global registry.
 load_all_packages :: proc(main_file: string) -> [dynamic]^Package {
 	init_namespace_resolution()
 	files_loading = make(map[string]bool)
@@ -24,7 +28,10 @@ load_all_packages :: proc(main_file: string) -> [dynamic]^Package {
 	return packages
 }
 
-// DFS load: recursively loads imports. The call stack IS the cycle detector.
+// Function: load_package_recursive
+// Performs a DFS load of a source file and all its imports. Uses the call stack
+// for circular import detection and a visited map for diamond import deduplication.
+// Reads, lexes, parses the file, resolves its namespace, and recurses into imports.
 load_package_recursive :: proc(file: string) -> ^Package {
 	// Diamond import dedup — already loaded, skip
 	if pkg, exists := loaded_files[file]; exists {
@@ -81,6 +88,9 @@ load_package_recursive :: proc(file: string) -> ^Package {
 	return pkg
 }
 
+// Function: resolve_import_path
+// Resolves an import path relative to the directory of the importing file.
+// Returns the absolute path to the imported source file.
 resolve_import_path :: proc(base_file: string, import_path: string) -> string {
 	dir := filepath.dir(base_file)
 	res, _ := filepath.join([]string{dir, import_path}, context.allocator)

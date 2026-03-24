@@ -3,13 +3,35 @@ package compiler
 import "core:fmt"
 import "core:os"
 
+// Constant: PE32_PLUS_MAGIC
+// The PE32+ magic number (0x20B) identifying a 64-bit portable executable.
 PE32_PLUS_MAGIC          :: u16(0x20B)
+
+// Constant: IMAGE_BASE
+// Default preferred base address (0x140000000) at which the PE32+ image is loaded.
 IMAGE_BASE               :: u64(0x140000000)
+
+// Constant: SECTION_ALIGNMENT
+// Section alignment in memory (4 KiB). Each section starts on this boundary.
 SECTION_ALIGNMENT        :: u32(0x1000)
+
+// Constant: FILE_ALIGNMENT
+// Section alignment on disk (512 bytes). Raw data is padded to this boundary.
 FILE_ALIGNMENT           :: u32(0x200)
+
+// Constant: SUBSYSTEM_CONSOLE
+// Windows subsystem value (3) indicating a console application.
 SUBSYSTEM_CONSOLE        :: u16(3)
+
+// Constant: MAGIC_DOS
+// DOS stub magic number (0x5A4D, "MZ") placed at the start of the file.
 MAGIC_DOS                :: u16(0x5A4D)
 
+// Function: emit_pe32_exe
+// Emits a PE32+ executable to output_path. Iterates over packages, encodes
+// all function bodies into machine code, builds a small x86-64 entry stub
+// that calls the first function found, and writes PE headers with .text and
+// .data sections.
 emit_pe32_exe :: proc(output_path: string, packages: [dynamic]^Package, is_debug: bool) {
 	ctx: Encoder_Context
 	init_encoder(&ctx)
@@ -111,24 +133,34 @@ emit_pe32_exe :: proc(output_path: string, packages: [dynamic]^Package, is_debug
 	fmt.printf("PE32+: %s (%d .text, entry=%s)\n", output_path, text_raw_size, entry_fn_name)
 }
 
-// Helpers
+// Function: align_up
+// Rounds val up to the nearest multiple of alignment. Both values must be
+// powers of two. Returns the aligned result.
 align_up :: proc(val: u32, alignment: u32) -> u32 {
 	return (val + alignment - 1) & ~(alignment - 1)
 }
 
+// Function: w_u16
+// Writes a little-endian u16 value into buf at byte offset off.
 w_u16 :: proc(buf: ^[]u8, off: int, val: u16) {
 	buf[off] = u8(val); buf[off+1] = u8(val >> 8)
 }
 
+// Function: w_u32
+// Writes a little-endian u32 value into buf at byte offset off.
 w_u32 :: proc(buf: ^[]u8, off: int, val: u32) {
 	buf[off] = u8(val); buf[off+1] = u8(val >> 8); buf[off+2] = u8(val >> 16); buf[off+3] = u8(val >> 24)
 }
 
+// Function: w_u64
+// Writes a little-endian u64 value into buf at byte offset off.
 w_u64 :: proc(buf: ^[]u8, off: int, val: u64) {
 	buf[off] = u8(val); buf[off+1] = u8(val >> 8); buf[off+2] = u8(val >> 16); buf[off+3] = u8(val >> 24)
 	buf[off+4] = u8(val >> 32); buf[off+5] = u8(val >> 40); buf[off+6] = u8(val >> 48); buf[off+7] = u8(val >> 56)
 }
 
+// Function: write_zeros
+// Writes count zero bytes to file f, flushing in 256-byte chunks.
 write_zeros :: proc(f: ^os.File, count: u32) {
 	zeros := [256]u8{}
 	remaining := int(count)
@@ -140,6 +172,10 @@ write_zeros :: proc(f: ^os.File, count: u32) {
 	}
 }
 
+// Function: write_sec_hdr
+// Writes a COFF-style section header into buf at offset off. Fields include
+// the section name (up to 8 bytes), virtual size/address, raw data
+// size/pointer, and characteristics flags.
 write_sec_hdr :: proc(buf: ^[]u8, off: int, name: string, vsize: u32, vaddr: u32, rsize: u32, rptr: u32, chars: u32) {
 	for i := 0; i < 8; i += 1 {
 		if i < len(name) { buf[off+i] = u8(name[i]) } else { buf[off+i] = 0 }

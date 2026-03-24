@@ -5,6 +5,9 @@ import "core:os"
 import "core:path/filepath"
 import "core:strings"
 
+// Type: Package
+// Represents a loaded source file and its resolved namespace. Tracks the
+// namespace name, source file path, parsed AST, and import alias mappings.
 Package :: struct {
 	name:      string, // namespace name
 	file:      string,
@@ -12,12 +15,21 @@ Package :: struct {
 	imports:   map[string]string, // alias -> namespace_name
 }
 
+// Variable: global_packages
+// Global registry mapping namespace names to their Package objects.
+// Used for namespace collision detection and cross-package lookups.
 global_packages: map[string]^Package // namespace_name -> Package
 
+// Function: init_namespace_resolution
+// Initializes the global_packages map for namespace resolution.
 init_namespace_resolution :: proc() {
 	global_packages = make(map[string]^Package)
 }
 
+// Function: resolve_package_namespace
+// Resolves a package's namespace name. Defaults to the filename stem,
+// then allows an explicit Namespace_Decl to override. Checks for collisions
+// across the global registry and reports Fatal_Namespace on duplicates.
 resolve_package_namespace :: proc(pkg: ^Package) {
 	// 1. Default from filename
 	base := filepath.base(pkg.file)
@@ -52,7 +64,9 @@ resolve_package_namespace :: proc(pkg: ^Package) {
 	global_packages[pkg.name] = pkg
 }
 
-// (Will need to implement get_loc for all AST nodes or just use a helper)
+// Function: get_stmt_loc
+// Extracts the source location from any statement AST node. Returns an
+// empty Src_Loc for unrecognized node types.
 get_stmt_loc :: proc(stmt: Stmt) -> Src_Loc {
 	#partial switch s in stmt {
 	case ^Instr: return s.src_loc

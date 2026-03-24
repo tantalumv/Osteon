@@ -2,17 +2,28 @@ package compiler
 
 import "core:fmt"
 
+// Type: Constant_Value
+// Union type holding a compile-time constant value. Supports both integer
+// (i64) and floating-point (f64) constant representations.
 Constant_Value :: union {
 	i64,
 	f64,
 }
 
+// Variable: global_constants
+// Global registry mapping constant names to their evaluated Constant_Value.
+// Populated during declaration evaluation and queried during expression eval.
 global_constants: map[string]Constant_Value
 
+// Function: init_const_eval
+// Initializes the global_constants map for compile-time constant evaluation.
 init_const_eval :: proc() {
 	global_constants = make(map[string]Constant_Value)
 }
 
+// Function: eval_const_expr
+// Recursively evaluates a compile-time constant expression. Handles literals,
+// identifier lookups, binary/unary operations, sizeof, alignof, and offset intrinsics.
 eval_const_expr :: proc(expr: Const_Expr, pkg: ^Package) -> Constant_Value {
 	#partial switch e in expr {
 	case i64: { return e }
@@ -50,7 +61,9 @@ eval_const_expr :: proc(expr: Const_Expr, pkg: ^Package) -> Constant_Value {
 	}
 }
 
-// SIZEOF(Type) — byte size of a struct (AoS: with padding, SoA: per-element)
+// Function: eval_sizeof
+// Evaluates SIZEOF(Type) — returns the byte size of a struct (AoS: with padding,
+// SoA: per-element) or primitive type. Reports Fatal_Undef for unknown types.
 eval_sizeof :: proc(type_name: string) -> Constant_Value {
 	if info, exists := global_structs[type_name]; exists {
 		return i64(info.size)
@@ -68,7 +81,9 @@ eval_sizeof :: proc(type_name: string) -> Constant_Value {
 	return i64(0)
 }
 
-// ALIGNOF(Type) — alignment in bytes
+// Function: eval_alignof
+// Evaluates ALIGNOF(Type) — returns the alignment requirement in bytes for a
+// struct or primitive type. Primitive types are self-aligned to their size.
 eval_alignof :: proc(type_name: string) -> Constant_Value {
 	if info, exists := global_structs[type_name]; exists {
 		return i64(info.align)
@@ -86,8 +101,9 @@ eval_alignof :: proc(type_name: string) -> Constant_Value {
 	return i64(0)
 }
 
-// SIZEOF_SOA(Type, capacity) — total SoA block size
-// = sum(field_sizes) * capacity, aligned to struct alignment
+// Function: eval_sizeof_soa
+// Evaluates SIZEOF_SOA(Type, capacity) — total SoA block size computed as
+// sum(field_sizes) * capacity, aligned to the struct's alignment boundary.
 eval_sizeof_soa :: proc(type_name: string, capacity: i64) -> Constant_Value {
 	if info, exists := global_structs[type_name]; exists {
 		// info.size for SoA structs = per-element size (sum of field sizes)
@@ -103,7 +119,9 @@ eval_sizeof_soa :: proc(type_name: string, capacity: i64) -> Constant_Value {
 	return i64(0)
 }
 
-// @offset(Type, field) — byte offset of field in AoS struct
+// Function: eval_aos_offset
+// Evaluates @offset(Type, field) — returns the byte offset of a named field
+// within an AoS struct layout. Reports Fatal_Undef if struct or field not found.
 eval_aos_offset :: proc(type_name: string, field_name: string) -> Constant_Value {
 	if info, exists := global_structs[type_name]; exists {
 		for f in info.fields {
@@ -118,8 +136,9 @@ eval_aos_offset :: proc(type_name: string, field_name: string) -> Constant_Value
 	return i64(0)
 }
 
-// @soa_offset(Type, field, capacity) — byte offset of field array in SoA block
-// = sum_of_sizes_of_preceding_fields * capacity
+// Function: eval_soa_offset
+// Evaluates @soa_offset(Type, field, capacity) — byte offset of a field's array
+// in a SoA block, computed as sum_of_sizes_of_preceding_fields * capacity.
 eval_soa_offset :: proc(type_name: string, field_name: string, capacity: i64) -> Constant_Value {
 	if info, exists := global_structs[type_name]; exists {
 		for f in info.fields {
@@ -135,6 +154,9 @@ eval_soa_offset :: proc(type_name: string, field_name: string, capacity: i64) ->
 	return i64(0)
 }
 
+// Function: eval_binop
+// Evaluates a binary operation on two Constant_Value operands. Supports
+// arithmetic (+, -, *, /, %), bitwise (<<, >>, &, |, ~), and comparison operators.
 eval_binop :: proc(op: Token_Kind, lhs: Constant_Value, rhs: Constant_Value) -> Constant_Value {
 	l := lhs.(i64)
 	r := rhs.(i64)
@@ -160,6 +182,9 @@ eval_binop :: proc(op: Token_Kind, lhs: Constant_Value, rhs: Constant_Value) -> 
 	}
 }
 
+// Function: eval_unop
+// Evaluates a unary operation on a Constant_Value. Supports negation (-)
+// and bitwise complement (~). Returns 0 for unrecognized operators.
 eval_unop :: proc(op: Token_Kind, val: Constant_Value) -> Constant_Value {
 	v := val.(i64)
 	#partial switch op {
@@ -169,7 +194,9 @@ eval_unop :: proc(op: Token_Kind, val: Constant_Value) -> Constant_Value {
 	}
 }
 
-// Extract i64 from Constant_Value
+// Function: as_i64
+// Extracts an i64 value from a Constant_Value union. Converts f64 to i64
+// via truncation. Returns 0 for unrecognized variants.
 as_i64 :: proc(cv: Constant_Value) -> i64 {
 	#partial switch v in cv {
 	case i64: { return v }

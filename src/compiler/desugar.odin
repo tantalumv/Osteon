@@ -5,24 +5,34 @@ import "core:fmt"
 // Global label counter for unique generated labels
 desugar_label_counter: int
 
-// Arena info: tracks the original buffer register, scratch register, and buffer size
+// Type: Arena_Info
+// Tracks the original buffer register, scratch register used as the bump
+// pointer, and compile-time buffer size for an arena allocation region.
 Arena_Info :: struct {
 	buf_reg:     string,
 	scratch_reg: string,
 	buf_size:    i64,
 }
 
+// Function: init_desugar
+// Resets the global desugar label counter to zero. Must be called before
+// desugaring a new compilation unit.
 init_desugar :: proc() {
 	desugar_label_counter = 0
 }
 
+// Function: next_desugar_label
+// Generates and returns a unique label string prefixed with prefix and an
+// incrementing counter (e.g., "__for_1").
 next_desugar_label :: proc(prefix: string) -> string {
 	desugar_label_counter += 1
 	return fmt.tprintf("__%s_%d", prefix, desugar_label_counter)
 }
 
-// desugar_stmts transforms structured control flow into raw instructions.
-// Processes function bodies: for, while, expect, assert, arena/alloc/reset.
+// Function: desugar_stmts
+// Transforms structured control flow (for, while, expect, assert,
+// arena/alloc/reset, canary, mova) into raw machine-level instructions.
+// Returns a new dynamic array of desugared statements.
 desugar_stmts :: proc(stmts: []Stmt) -> [dynamic]Stmt {
 	result := make([dynamic]Stmt)
 
@@ -90,17 +100,10 @@ desugar_stmts :: proc(stmts: []Stmt) -> [dynamic]Stmt {
 	return result
 }
 
-// For loop:
-//   for reg = start, end, step { body }
-// Desugars to:
-//   mov reg, start
-//   label loop:
-//   cmp reg, end
-//   jge done
-//   <body>
-//   add reg, step
-//   jmp loop
-//   label done:
+// Function: desugar_for_loop
+// Desugars a counted for loop into a compare-and-jump sequence:
+// init counter, label loop, cmp against end, jge done, body, add step,
+// jmp loop, label done.
 desugar_for_loop :: proc(loop: ^For_Loop, out: ^[dynamic]Stmt) {
 	loop_label := next_desugar_label("for")
 	// Use user-specified label for done target if provided (for explicit break via jmp)
@@ -162,16 +165,10 @@ desugar_for_loop :: proc(loop: ^For_Loop, out: ^[dynamic]Stmt) {
 	append(out, Stmt(done_lbl))
 }
 
-// While loop:
-//   while cmp(u64) rcx, imm(0) / jnz { body }
-// Desugars to:
-//   label loop:
-//   <cond instr>
-//   <inverse jcc> done
-//   <body>
-//   <cond instr again>
-//   <jcc> loop
-//   label done:
+// Function: desugar_while_loop
+// Desugars a while loop: emits a loop label, the condition instruction,
+// an inverse jump to exit on failure, the body, the condition again,
+// a jump back to loop on success, and a done label.
 desugar_while_loop :: proc(loop: ^While_Loop, out: ^[dynamic]Stmt) {
 	loop_label := next_desugar_label("while")
 	done_label := next_desugar_label("while_done")
@@ -213,7 +210,9 @@ desugar_while_loop :: proc(loop: ^While_Loop, out: ^[dynamic]Stmt) {
 	append(out, Stmt(done_lbl))
 }
 
-// expect("msg") → test rdx, rdx; jz __expect_ok; ud2; label __expect_ok:
+// Function: desugar_expect
+// Desugars an expect statement into: test rdx, rdx; jz ok_label; ud2;
+// label ok. Triggers ud2 if rdx is non-zero (error path).
 desugar_expect :: proc(e: ^Expect_Stmt, out: ^[dynamic]Stmt) {
 	ok_label := next_desugar_label("expect_ok")
 
@@ -241,8 +240,9 @@ desugar_expect :: proc(e: ^Expect_Stmt, out: ^[dynamic]Stmt) {
 	append(out, Stmt(ok_lbl))
 }
 
-// assert(cmp(u64) rax, imm(0), jnz, "msg")
-// → cmp(u64) rax, imm(0); jnz ok; ud2; label ok:
+// Function: desugar_assert
+// Desugars a runtime assert into: cmp instruction, conditional jump to
+// ok_label on success, ud2 trap on failure, and ok label.
 desugar_assert :: proc(a: ^Assert_Stmt, out: ^[dynamic]Stmt) {
 	ok_label := next_desugar_label("assert_ok")
 
@@ -271,7 +271,9 @@ desugar_assert :: proc(a: ^Assert_Stmt, out: ^[dynamic]Stmt) {
 	append(out, Stmt(ok_lbl))
 }
 
-// inverse_condition returns the opposite jump condition
+// Function: inverse_condition
+// Returns the logical inverse of a jump condition code (e.g., "jz" returns
+// "jnz", "jge" returns "jl"). Falls back to "jnz" for unknown codes.
 inverse_condition :: proc(cc: string) -> string {
 	switch cc {
 	case "jz":  return "jnz"
@@ -302,7 +304,9 @@ inverse_condition :: proc(cc: string) -> string {
 // Arena desugaring
 // ================================================================
 
-// Arena declaration: emits no instructions. buf register becomes the bump pointer base.
+// Function: desugar_arena_decl
+// Desugars an arena declaration by emitting a mov that initializes the
+// scratch register from the buffer base register.
 desugar_arena_decl :: proc(arena: ^Arena_Decl, arena_info: ^map[string]Arena_Info, out: ^[dynamic]Stmt) {
 	info, exists := arena_info^[arena.name]
 	if !exists || info.buf_reg == "" {
@@ -318,7 +322,10 @@ desugar_arena_decl :: proc(arena: ^Arena_Decl, arena_info: ^map[string]Arena_Inf
 	append(out, Stmt(mov_instr))
 }
 
-// alloc(arena, size, align):
+// Function: desugar_alloc
+// Desugars an arena allocation: aligns the scratch bump pointer, copies
+// it to rax as the result, advances by size, and optionally checks for
+// buffer overflow (triggering ud2 on out-of-bounds).
 desugar_alloc :: proc(alloc: ^Alloc_Stmt, arena_info: ^map[string]Arena_Info, out: ^[dynamic]Stmt) {
 	info, exists := arena_info^[alloc.arena_name]
 	if !exists {
@@ -401,7 +408,9 @@ desugar_alloc :: proc(alloc: ^Alloc_Stmt, arena_info: ^map[string]Arena_Info, ou
 	}
 }
 
-// reset(arena): re-initialize scratch from original buffer register
+// Function: desugar_reset
+// Desugars an arena reset by re-initializing the scratch register from
+// the original buffer base register, effectively rewinding the bump pointer.
 desugar_reset :: proc(rst: ^Reset_Stmt, arena_info: ^map[string]Arena_Info, out: ^[dynamic]Stmt) {
 	info, exists := arena_info^[rst.arena_name]
 	if !exists || info.buf_reg == "" {
@@ -416,31 +425,10 @@ desugar_reset :: proc(rst: ^Reset_Stmt, arena_info: ^map[string]Arena_Info, out:
 	append(out, Stmt(mov_instr))
 }
 
-// ================================================================
-// for[unroll(N)] — N copies of body per iteration + scalar tail
-// ================================================================
-//
-// Desugars to:
-//   mov reg, start
-//   label main:
-//   cmp reg, end - (N-1)*step   (if end is compile-time known)
-//   jge tail
-//   <body copy 0>
-//   add reg, step
-//   <body copy 1>
-//   add reg, step
-//   ...
-//   <body copy N-1>
-//   add reg, step
-//   jmp main
-//   label tail:
-//   cmp reg, end
-//   jge done
-//   <body>
-//   add reg, step
-//   jmp tail
-//   label done:
-
+// Function: desugar_for_unroll
+// Desugars a for loop with loop unrolling: emits N copies of the body per
+// iteration (with interleaved step increments), followed by a scalar tail
+// that handles any remaining iterations one at a time.
 desugar_for_unroll :: proc(loop: ^For_Loop, out: ^[dynamic]Stmt) {
 	N := loop.unroll_factor
 	main_label := next_desugar_label("for_unroll_main")
@@ -549,8 +537,13 @@ desugar_for_unroll :: proc(loop: ^For_Loop, out: ^[dynamic]Stmt) {
 // Desugars to: mov deref(rbp, -8), imm(CANARY_VALUE)
 // ================================================================
 
+// Constant: CANARY_VALUE
+// Magic value (0x3F2C1D4B5E60789) written to the stack canary slot below rbp.
 CANARY_VALUE :: i64(0x3F2C1D4B5E60789)
 
+// Function: desugar_canary
+// Desugars a canary instruction into a u64 mov that writes CANARY_VALUE
+// to the stack slot at rbp - 8.
 desugar_canary :: proc(c: ^Instr, out: ^[dynamic]Stmt) {
 	// mov(u64) deref(rbp, -8), imm(CANARY_VALUE)
 	mov_instr := new(Instr)
@@ -560,15 +553,9 @@ desugar_canary :: proc(c: ^Instr, out: ^[dynamic]Stmt) {
 	append(out, Stmt(mov_instr))
 }
 
-// ================================================================
-// check_canary — stack canary verify
-// Desugars to:
-//   cmp(u64) deref(rbp, -8), imm(CANARY_VALUE)
-//   je ok
-//   ud2
-//   label ok:
-// ================================================================
-
+// Function: desugar_check_canary
+// Desugars a check_canary instruction: compares the stack slot at rbp - 8
+// against CANARY_VALUE, jumps to ok_label on match, otherwise traps with ud2.
 desugar_check_canary :: proc(c: ^Instr, out: ^[dynamic]Stmt) {
 	ok_label := next_desugar_label("canary_ok")
 
@@ -596,17 +583,10 @@ desugar_check_canary :: proc(c: ^Instr, out: ^[dynamic]Stmt) {
 	append(out, Stmt(ok_lbl))
 }
 
-// ================================================================
-// mova — bounds-checked memory access
-// mova(type) dst, deref(base, idx, scale, offset), count
-// Desugars to:
-//   cmp(u64) idx, count
-//   jb ok
-//   ud2
-//   label ok:
-//   mov(type) dst, deref(base, idx, scale, offset)
-// ================================================================
-
+// Function: desugar_mova
+// Desugars a bounds-checked memory access: compares the index register
+// against count, traps with ud2 if out of bounds, then performs the
+// underlying mov.
 desugar_mova :: proc(m: ^Instr, out: ^[dynamic]Stmt) {
 	ok_label := next_desugar_label("mova_ok")
 
@@ -660,4 +640,3 @@ desugar_mova :: proc(m: ^Instr, out: ^[dynamic]Stmt) {
 	append(&mov_instr.operands, mem)
 	append(out, Stmt(mov_instr))
 }
-
